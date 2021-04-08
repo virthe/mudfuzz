@@ -100,7 +100,8 @@ class SendEOL ( FuzzAction ):
 
 class SendCommand ( FuzzAction ):
     def execute ( self, mudfuzz ):
-        mudfuzz.send_string ( "fart" )
+        mudfuzz.send_string ( 
+                random.choice ( mudfuzz.config_data [ "valid_commands" ] ))
         mudfuzz.send_eol ()
 
 class MudConnection:

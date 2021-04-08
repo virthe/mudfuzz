@@ -4,5 +4,7 @@
     "user" : "testchar",
     "password" : "testchar",
     "user_prompt" : "Please enter an account name:",
-    "password_prompt" : "What is your password?"
+    "password_prompt" : "What is your password?",
+
+    "valid_commands" : [ "blink", "dance", "say hello" ]
 }
