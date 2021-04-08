@@ -16,6 +16,12 @@ def main ():
         config_data = parse_config_file ( f )
 
     with Telnet ( config_data["mud_host"], config_data["mud_port"] ) as tn:
+        tn.read_until ( bytes (  config_data [ "user_prompt" ], "utf-8" ) )
+        tn.write ( config_data [ "user" ].encode ('ascii') )
+        tn.write ( "\r\n".encode ('ascii') )
+        tn.read_until ( bytes (  config_data [ "user_prompt" ], "utf-8" ) )
+        tn.write ( config_data [ "password" ].encode ('ascii') )
+        tn.write ( "\r\n".encode ('ascii') )
         tn.interact ()
 
 if __name__ == "__main__":

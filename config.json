@@ -2,5 +2,7 @@
     "mud_host" : "localhost",
     "mud_port" : "8000",
     "user" : "testchar",
-    "password" : "testchar"
+    "password" : "testchar",
+    "user_prompt" : "Please enter an account name:",
+    "password_prompt" : "What is your password?"
 }
