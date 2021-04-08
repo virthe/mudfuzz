@@ -18,6 +18,8 @@ class MudFuzz:
         self.state = MudFuzzState.START
         self.connection = None
 
+        self.actions = [ SendRandomString (), SendEOL () ]
+
     def connect ( self ):
         if ( self.state is not MudFuzzState.START ):
             return
@@ -48,37 +50,52 @@ class MudFuzz:
         if ( self.state is MudFuzzState.AWAIT_USER ):
            if ( re.search ( self.config_data [ "user_prompt" ], text ) ):
                print ( "User prompt detected." )
-               self._send_string ( self.config_data [ "user" ] )
+               self.send_string ( self.config_data [ "user" ] )
+               self.send_eol ()
                self.state = MudFuzzState.AWAIT_PASS
                return
 
         if ( self.state is MudFuzzState.AWAIT_PASS ):
            if ( re.search ( self.config_data [ "password_prompt" ], text ) ):
                print ( "Password prompt detected." )
-               self._send_string ( self.config_data [ "password" ] )
+               self.send_string ( self.config_data [ "password" ] )
+               self.send_eol ()
                self.state = MudFuzzState.FUZZING
                return
 
         if ( self.state is MudFuzzState.FUZZING ):
-            #simple random string proof of concept
-            r_string = "".join(
-                    random.choices(string.ascii_letters+string.digits, k=8 )) 
-            self._send_string ( r_string )
+            random.choice ( self.actions ).execute ( self )
+            return
 
-    def _send_string ( self, s ):
-
-
+    def send_string ( self, s ):
         b = s.encode ( "utf-8" )
-        self._send_buffer ( b )
-        self._send_buffer ( "\r\n".encode ( "utf-8" ) )
+        self.send_buffer ( b )
 
-    def _send_buffer ( self, b ):
+    def send_eol ( self ):
+        self.send_string ( "\r\n" )
+
+    def send_buffer ( self, b ):
         if ( self.connection is None ):
             return
 
         print ( "Sending : %s" % ( b.decode ( "utf-8" ) ) )
 
         self.connection.send_queue.put_nowait ( b )
+
+class FuzzAction:
+    def execute ( self, mudfuzz ):
+        raise NotImplementedError
+
+class SendRandomString ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        r_string = "".join(
+                random.choices(string.ascii_letters+string.digits, 
+                k=random.randint(0,128))) 
+        mudfuzz.send_string ( r_string )
+
+class SendEOL ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        mudfuzz.send_eol ()
 
 class MudConnection:
 
