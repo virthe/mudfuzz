@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import json, threading, queue, time, re, string, random
+import json, threading, queue, time, re, string, random, argparse
 from telnetlib import Telnet
 from enum import Enum, auto
 
@@ -142,12 +142,12 @@ def parse_config_file ( f ):
     data = json.load ( f )
     return data
 
-def main ():
+def main ( **kwargs ):
     print ( "MUD Fuzz" )
 
     config_data = None
 
-    with ( open ( 'config.json' ) ) as f:
+    with ( open ( kwargs [ "config_path" ] ) ) as f:
         config_data = parse_config_file ( f )
 
     mudfuzz = MudFuzz ( config_data )
@@ -159,4 +159,8 @@ def main ():
         time.sleep ( 0.1 )
 
 if __name__ == "__main__":
-    main ()
+    parser = argparse.ArgumentParser ( description="Mud Fuzz",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter )
+    parser.add_argument( "--config", help = "Path to config.json" )
+    args = parser.parse_args ()
+    main ( config_path=args.config )
