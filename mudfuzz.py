@@ -18,7 +18,7 @@ class MudFuzz:
         self.state = MudFuzzState.START
         self.connection = None
 
-        self.actions = [ SendRandomString (), SendEOL () ]
+        self.actions = [ SendRandomString (), SendEOL (), SendCommand () ]
 
     def connect ( self ):
         if ( self.state is not MudFuzzState.START ):
@@ -98,6 +98,11 @@ class SendEOL ( FuzzAction ):
     def execute ( self, mudfuzz ):
         mudfuzz.send_eol ()
 
+class SendCommand ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        mudfuzz.send_string ( "fart" )
+        mudfuzz.send_eol ()
+
 class MudConnection:
 
     def __init__ ( self, host, port ):
@@ -154,4 +159,4 @@ def main ():
         time.sleep ( 0.1 )
 
 if __name__ == "__main__":
-    main ();
+    main ()
