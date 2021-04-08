@@ -78,7 +78,8 @@ class MudFuzz:
         if ( self.connection is None ):
             return
 
-        print ( "Sending : %s" % ( b.decode ( "utf-8" ) ) )
+        print ( "Sending : %s" % 
+                ( b.decode ( "utf-8" ).encode ( "unicode_escape" ) ) )
 
         self.connection.send_queue.put_nowait ( b )
 
