@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import json, threading, queue, time, re
+import json, threading, queue, time, re, string, random
 from telnetlib import Telnet
 from enum import Enum, auto
 
@@ -50,14 +50,24 @@ class MudFuzz:
                print ( "User prompt detected." )
                self._send_string ( self.config_data [ "user" ] )
                self.state = MudFuzzState.AWAIT_PASS
+               return
 
         if ( self.state is MudFuzzState.AWAIT_PASS ):
            if ( re.search ( self.config_data [ "password_prompt" ], text ) ):
                print ( "Password prompt detected." )
                self._send_string ( self.config_data [ "password" ] )
-               self.state = MudFuzzState.AWAIT_PASS
+               self.state = MudFuzzState.FUZZING
+               return
+
+        if ( self.state is MudFuzzState.FUZZING ):
+            #simple random string proof of concept
+            r_string = "".join(
+                    random.choices(string.ascii_letters+string.digits, k=8 )) 
+            self._send_string ( r_string )
 
     def _send_string ( self, s ):
+
+        print ( "Sending "+s )
 
         s += "\r\n"
 
