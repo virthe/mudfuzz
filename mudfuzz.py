@@ -67,13 +67,17 @@ class MudFuzz:
 
     def _send_string ( self, s ):
 
-        print ( "Sending "+s )
 
-        s += "\r\n"
+        b = s.encode ( "utf-8" )
+        self._send_buffer ( b )
+        self._send_buffer ( "\r\n".encode ( "utf-8" ) )
 
+    def _send_buffer ( self, b ):
         if ( self.connection is None ):
             return
-        b = s.encode ( 'utf-8' )
+
+        print ( "Sending : %s" % ( b.decode ( "utf-8" ) ) )
+
         self.connection.send_queue.put_nowait ( b )
 
 class MudConnection:
