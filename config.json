@@ -1,0 +1,6 @@
+{
+    "mud_host" : "localhost",
+    "mud_port" : "8000",
+    "user" : "testchar",
+    "password" : "testchar"
+}
