@@ -3,6 +3,7 @@
 import json, threading, queue, time, re, string, random, argparse, os
 from telnetlib import Telnet
 from enum import Enum, auto
+from collections import deque
 
 class MudFuzzState(Enum):
     START = auto()
@@ -26,7 +27,8 @@ class MudFuzz:
                 SendLook ( 0.2 ), 
                 SendCommand (),
                 SendWord (0.1),
-                Sleep(0.05)
+                Sleep(0.05),
+                Echo ( 0.5 )
             ]
 
     def connect ( self ):
@@ -81,7 +83,8 @@ class MudFuzz:
                 return
 
             weights = [ x.weight for x in self.actions ]
-            random.choices ( self.actions, weights ) [ 0 ].execute ( self )
+            random.choices ( self.actions, weights ) [ 0 ] \
+                .execute ( self, text )
             return
 
     def send_string ( self, s ):
@@ -106,53 +109,68 @@ class MudFuzz:
 class FuzzAction:
     def __init__ ( self, weight=1 ):
         self.weight = weight
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         raise NotImplementedError
 
 class SendRandomString ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         r_string = "".join(
                 random.choices(string.printable, 
                 k=random.randint(0,128))) 
         mudfuzz.send_string ( r_string )
 
 class SendRandomBytes ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         mudfuzz.send_buffer ( os.urandom ( random.randint ( 0, 1024 ) ) )
 
 class SendEOL ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         mudfuzz.send_eol ()
 
 class SendEscape ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         mudfuzz.send_eol ()
         mudfuzz.send_string ( "**" )
         mudfuzz.send_eol ()
 
 class SendCommand ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         mudfuzz.send_string ( 
                 random.choice ( mudfuzz.config_data [ "valid_commands" ] ))
         mudfuzz.send_string ( " " )
 
 class SendWord ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         mudfuzz.send_string ( 
                 random.choice ( mudfuzz.config_data [ "valid_words" ] ))
         mudfuzz.send_string ( " " )
 
 class SendLook ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         mudfuzz.send_eol ()
         mudfuzz.send_string ( "look" )
         mudfuzz.send_eol ()
 
 class Sleep ( FuzzAction ):
-    def execute ( self, mudfuzz ):
+    def execute ( self, mudfuzz, text ):
         sleeptime = random.random () * 3
         print ( "Sleeping for %f." % sleeptime )
         time.sleep ( sleeptime )
+
+class Echo ( FuzzAction ):
+    def __init__ ( self, weight=1 ):
+        super().__init__( weight )
+        self.memory = deque ( [], 500 )
+
+    def execute ( self, mudfuzz, text ):
+        try:
+            words = strip_ansi(text).strip("\r\n").split(" ")
+        except:
+            return
+
+        self.memory.extend ( words )
+
+        mudfuzz.send_string ( random.choice ( words ) )
 
 class MudConnection:
 
@@ -187,6 +205,10 @@ class MudConnection:
                         break
 
                 time.sleep ( 0.1 )
+
+def strip_ansi ( text ):
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
 
 
 def parse_config_file ( f ):
