@@ -20,9 +20,13 @@ class MudFuzz:
 
         self.actions = [ 
                 SendRandomString ( 0.01 ), 
-                SendRandomBytes ( 0.005), 
-                SendEOL ( 0.25 ), 
-                SendCommand () 
+                #SendRandomBytes ( 0.005), 
+                SendEOL ( 0.5 ), 
+                SendEscape ( 0.1 ), 
+                SendLook ( 0.2 ), 
+                SendCommand (),
+                SendWord (0.1),
+                Sleep(0.05)
             ]
 
     def connect ( self ):
@@ -47,7 +51,11 @@ class MudFuzz:
 
     def _process_incoming_data ( self, rcv ):
 
-        text = rcv.decode ( 'utf-8' )
+        try:
+            text = rcv.decode ( 'utf-8' )
+        except:
+            print ( "Bad string from MUD" )
+            return
 
         if ( len ( text ) > 0 ):
             print ( text )
@@ -116,11 +124,35 @@ class SendEOL ( FuzzAction ):
     def execute ( self, mudfuzz ):
         mudfuzz.send_eol ()
 
+class SendEscape ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        mudfuzz.send_eol ()
+        mudfuzz.send_string ( "**" )
+        mudfuzz.send_eol ()
+
 class SendCommand ( FuzzAction ):
     def execute ( self, mudfuzz ):
         mudfuzz.send_string ( 
                 random.choice ( mudfuzz.config_data [ "valid_commands" ] ))
         mudfuzz.send_string ( " " )
+
+class SendWord ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        mudfuzz.send_string ( 
+                random.choice ( mudfuzz.config_data [ "valid_words" ] ))
+        mudfuzz.send_string ( " " )
+
+class SendLook ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        mudfuzz.send_eol ()
+        mudfuzz.send_string ( "look" )
+        mudfuzz.send_eol ()
+
+class Sleep ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        sleeptime = random.random () * 3
+        print ( "Sleeping for %f." % sleeptime )
+        time.sleep ( sleeptime )
 
 class MudConnection:
 
