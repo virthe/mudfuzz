@@ -19,9 +19,9 @@ class MudFuzz:
         self.connection = None
 
         self.actions = [ 
-                SendRandomString (), 
-                #SendRandomBytes (), 
-                SendEOL (), 
+                SendRandomString ( 0.01 ), 
+                SendRandomBytes ( 0.005), 
+                SendEOL ( 0.25 ), 
                 SendCommand () 
             ]
 
@@ -69,7 +69,11 @@ class MudFuzz:
                return
 
         if ( self.state is MudFuzzState.FUZZING ):
-            random.choice ( self.actions ).execute ( self )
+            if ( len ( self.actions ) == 0 ):
+                return
+
+            weights = [ x.weight for x in self.actions ]
+            random.choices ( self.actions, weights ) [ 0 ].execute ( self )
             return
 
     def send_string ( self, s ):
@@ -92,6 +96,8 @@ class MudFuzz:
         self.connection.send_queue.put_nowait ( b )
 
 class FuzzAction:
+    def __init__ ( self, weight=1 ):
+        self.weight = weight
     def execute ( self, mudfuzz ):
         raise NotImplementedError
 
