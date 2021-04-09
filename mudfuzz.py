@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import json, threading, queue, time, re, string, random, argparse
+import json, threading, queue, time, re, string, random, argparse, os
 from telnetlib import Telnet
 from enum import Enum, auto
 
@@ -18,7 +18,12 @@ class MudFuzz:
         self.state = MudFuzzState.START
         self.connection = None
 
-        self.actions = [ SendRandomString (), SendEOL (), SendCommand () ]
+        self.actions = [ 
+                SendRandomString (), 
+                #SendRandomBytes (), 
+                SendEOL (), 
+                SendCommand () 
+            ]
 
     def connect ( self ):
         if ( self.state is not MudFuzzState.START ):
@@ -78,8 +83,11 @@ class MudFuzz:
         if ( self.connection is None ):
             return
 
-        print ( "Sending : %s" % 
-                ( b.decode ( "utf-8" ).encode ( "unicode_escape" ) ) )
+        try:
+            print ( "Sending : %s" % 
+                    ( b.decode ( "utf-8" ).encode ( "unicode_escape" ) ) )
+        except:
+            print ( "Sending garbage." )
 
         self.connection.send_queue.put_nowait ( b )
 
@@ -90,9 +98,13 @@ class FuzzAction:
 class SendRandomString ( FuzzAction ):
     def execute ( self, mudfuzz ):
         r_string = "".join(
-                random.choices(string.ascii_letters+string.digits, 
+                random.choices(string.printable, 
                 k=random.randint(0,128))) 
         mudfuzz.send_string ( r_string )
+
+class SendRandomBytes ( FuzzAction ):
+    def execute ( self, mudfuzz ):
+        mudfuzz.send_buffer ( os.urandom ( random.randint ( 0, 1024 ) ) )
 
 class SendEOL ( FuzzAction ):
     def execute ( self, mudfuzz ):
@@ -102,7 +114,7 @@ class SendCommand ( FuzzAction ):
     def execute ( self, mudfuzz ):
         mudfuzz.send_string ( 
                 random.choice ( mudfuzz.config_data [ "valid_commands" ] ))
-        mudfuzz.send_eol ()
+        mudfuzz.send_string ( " " )
 
 class MudConnection:
 
