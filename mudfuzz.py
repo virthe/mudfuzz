@@ -20,16 +20,18 @@ class MudFuzz:
         self.connection = None
 
         self.actions = [ 
-                SendRandomString ( 0.01 ), 
+                SendRandomString ( 0.05 ), 
                 #SendRandomBytes ( 0.005), 
-                SendEOL ( 0.5 ), 
+                SendEOL ( 0.25 ), 
                 SendEscape ( 0.1 ), 
                 SendLook ( 0.2 ), 
                 SendCommand (),
-                SendWord (0.1),
-                Sleep(0.05),
-                Echo ( 0.5 )
+                SendWord (0.05),
+                Sleep(0.1),
+                SendRememberedWord ( 0.75 )
             ]
+
+        self.memory = deque ( [], 100 )
 
     def connect ( self ):
         if ( self.state is not MudFuzzState.START ):
@@ -82,6 +84,8 @@ class MudFuzz:
             if ( len ( self.actions ) == 0 ):
                 return
 
+            self.remember_words ( text )
+
             weights = [ x.weight for x in self.actions ]
             random.choices ( self.actions, weights ) [ 0 ] \
                 .execute ( self, text )
@@ -105,6 +109,21 @@ class MudFuzz:
             print ( "Sending garbage." )
 
         self.connection.send_queue.put_nowait ( b )
+
+    def remember_words ( self, text ):
+        try:
+            words = strip_ansi(text).strip().split(" ")
+        except:
+            return
+
+        words = [ x for x in words if len ( x ) > 0 ]
+
+        self.memory.extend ( words )
+
+    def get_random_remembered_word ( self ):
+        if ( len ( self.memory ) < 1 ):
+            return "memory"
+        return random.choice ( self.memory ) 
 
 class FuzzAction:
     def __init__ ( self, weight=1 ):
@@ -149,6 +168,11 @@ class SendLook ( FuzzAction ):
     def execute ( self, mudfuzz, text ):
         mudfuzz.send_eol ()
         mudfuzz.send_string ( "look" )
+
+        if ( random.random () < 0.5 ):
+            mudfuzz.send_string ( " " )
+            mudfuzz.send_string ( mudfuzz.get_random_remembered_word ())
+
         mudfuzz.send_eol ()
 
 class Sleep ( FuzzAction ):
@@ -157,20 +181,10 @@ class Sleep ( FuzzAction ):
         print ( "Sleeping for %f." % sleeptime )
         time.sleep ( sleeptime )
 
-class Echo ( FuzzAction ):
-    def __init__ ( self, weight=1 ):
-        super().__init__( weight )
-        self.memory = deque ( [], 500 )
-
+class SendRememberedWord ( FuzzAction ):
     def execute ( self, mudfuzz, text ):
-        try:
-            words = strip_ansi(text).strip("\r\n").split(" ")
-        except:
-            return
-
-        self.memory.extend ( words )
-
-        mudfuzz.send_string ( random.choice ( words ) )
+        mudfuzz.send_string ( mudfuzz.get_random_remembered_word ())
+        mudfuzz.send_string ( " " )
 
 class MudConnection:
 
