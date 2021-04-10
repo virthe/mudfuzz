@@ -7,4 +7,5 @@
     "password_prompt" : "What is your password?",
 
     "valid_commands" : [ "blink", "dance", "say hello" ]
+    "valid_words" : [ "this", "that", "the other" ]
 }

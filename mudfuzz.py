@@ -5,6 +5,18 @@ from telnetlib import Telnet
 from enum import Enum, auto
 from collections import deque
 from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class MudFuzzConfig:
+    mud_host: str
+    mud_port: str
+    user: str
+    password: str
+    user_prompt: str
+    password_prompt: str
+    valid_commands: List [ str ]
+    valid_words: List [ str ]
 
 class MudFuzzState(Enum):
     START = auto()
@@ -39,8 +51,8 @@ class MudFuzz:
             return
         self.state = MudFuzzState.CONNECTING
 
-        self.connection = MudConnection ( self.config_data [ "mud_host" ],
-                                          self.config_data [ "mud_port" ] )
+        self.connection = MudConnection ( self.config_data.mud_host,
+                                          self.config_data.mud_port )
         self.state = MudFuzzState.AWAIT_USER
 
     def tick ( self ):
@@ -66,17 +78,17 @@ class MudFuzz:
             print ( text )
 
         if ( self.state is MudFuzzState.AWAIT_USER ):
-           if ( re.search ( self.config_data [ "user_prompt" ], text ) ):
+           if ( re.search ( self.config_data.user_prompt, text ) ):
                print ( "User prompt detected." )
-               self.send_string ( self.config_data [ "user" ] )
+               self.send_string ( self.config_data.user )
                self.send_eol ()
                self.state = MudFuzzState.AWAIT_PASS
                return
 
         if ( self.state is MudFuzzState.AWAIT_PASS ):
-           if ( re.search ( self.config_data [ "password_prompt" ], text ) ):
+           if ( re.search ( self.config_data.password_prompt, text ) ):
                print ( "Password prompt detected." )
-               self.send_string ( self.config_data [ "password" ] )
+               self.send_string ( self.config_data.password )
                self.send_eol ()
                self.state = MudFuzzState.FUZZING
                return
@@ -156,11 +168,11 @@ class MudFuzz:
             self.send_eol ()
         if ( action.command == "sendcommand" ):
             self.send_string ( 
-            random.choice ( self.config_data [ "valid_commands" ] ))
+            random.choice ( self.config_data.valid_commands ))
             self.send_string ( " " )
         if ( action.command == "sendword" ):
             self.send_string ( 
-            random.choice ( self.config_data [ "valid_words" ] ))
+            random.choice ( self.config_data.valid_words ))
             self.send_string ( " " )
 
         if ( action.command == "sleep" ):
@@ -215,7 +227,7 @@ def strip_ansi ( text ):
 
 def parse_config_file ( f ):
     data = json.load ( f )
-    return data
+    return MudFuzzConfig ( **data )
 
 def main ( **kwargs ):
     print ( "MUD Fuzz" )
