@@ -4,6 +4,7 @@ import json, threading, queue, time, re, string, random, argparse, os
 from telnetlib import Telnet
 from enum import Enum, auto
 from collections import deque
+from dataclasses import dataclass
 
 class MudFuzzState(Enum):
     START = auto()
@@ -19,16 +20,16 @@ class MudFuzz:
         self.state = MudFuzzState.START
         self.connection = None
 
+        #SendRandomBytes ( 0.005), 
         self.actions = [ 
-                SendRandomString ( 0.05 ), 
-                #SendRandomBytes ( 0.005), 
-                SendEOL ( 0.25 ), 
-                SendEscape ( 0.1 ), 
-                SendLook ( 0.2 ), 
-                SendCommand (),
-                SendWord (0.05),
-                Sleep(0.1),
-                SendRememberedWord ( 0.75 )
+                self.FuzzAction ( "abc", 0.05, "sendrandomstring" ), 
+                self.FuzzAction ( "abc", 0.25, "sendeol" ), 
+                self.FuzzAction ( "abc", 0.1, "sendescape" ), 
+                self.FuzzAction ( "abc", 0.2, "sendlook" ), 
+                self.FuzzAction ( "abc", 1,  "sendcommand" ),
+                self.FuzzAction ( "abc", 0.05,  "sendword"),
+                self.FuzzAction ( "abc", 0.1,  "sleep"),
+                self.FuzzAction ( "abc", 0.75 ,  "sendrememberedword" )
             ]
 
         self.memory = deque ( [], 100 )
@@ -86,9 +87,9 @@ class MudFuzz:
 
             self.remember_words ( text )
 
-            weights = [ x.weight for x in self.actions ]
-            random.choices ( self.actions, weights ) [ 0 ] \
-                .execute ( self, text )
+            weights = [ x.probability for x in self.actions ]
+            action = random.choices ( self.actions, weights ) [ 0 ]
+            self.execute_action ( action, text )
             return
 
     def send_string ( self, s ):
@@ -125,66 +126,53 @@ class MudFuzz:
             return "memory"
         return random.choice ( self.memory ) 
 
-class FuzzAction:
-    def __init__ ( self, weight=1 ):
-        self.weight = weight
-    def execute ( self, mudfuzz, text ):
-        raise NotImplementedError
+    @dataclass
+    class FuzzAction:
+        name: str
+        probability: float
+        command: str
 
-class SendRandomString ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        r_string = "".join(
-                random.choices(string.printable, 
-                k=random.randint(0,128))) 
-        mudfuzz.send_string ( r_string )
+    def execute_action ( self, action, text ):
 
-class SendRandomBytes ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        mudfuzz.send_buffer ( os.urandom ( random.randint ( 0, 1024 ) ) )
+        if ( action.command == "sendrandomstring" ):
+            r_string = "".join(
+            random.choices(string.printable, 
+            k=random.randint(0,128))) 
+            self.send_string ( r_string )
+        if ( action.command == "sendeol" ):
+            self.send_eol ()
+        if ( action.command == "sendescape" ):
+            self.send_eol ()
+            self.send_string ( "**" )
+            self.send_eol ()
+        if ( action.command == "sendlook" ):
+            self.send_eol ()
+            self.send_string ( "look" )
 
-class SendEOL ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        mudfuzz.send_eol ()
+            if ( random.random () < 0.5 ):
+                self.send_string ( " " )
+                self.send_string ( self.get_random_remembered_word ())
 
-class SendEscape ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        mudfuzz.send_eol ()
-        mudfuzz.send_string ( "**" )
-        mudfuzz.send_eol ()
+            self.send_eol ()
+        if ( action.command == "sendcommand" ):
+            self.send_string ( 
+            random.choice ( self.config_data [ "valid_commands" ] ))
+            self.send_string ( " " )
+        if ( action.command == "sendword" ):
+            self.send_string ( 
+            random.choice ( self.config_data [ "valid_words" ] ))
+            self.send_string ( " " )
 
-class SendCommand ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        mudfuzz.send_string ( 
-                random.choice ( mudfuzz.config_data [ "valid_commands" ] ))
-        mudfuzz.send_string ( " " )
+        if ( action.command == "sleep" ):
+            sleeptime = random.random () * 3
+            print ( "Sleeping for %f." % sleeptime )
+            time.sleep ( sleeptime )
 
-class SendWord ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        mudfuzz.send_string ( 
-                random.choice ( mudfuzz.config_data [ "valid_words" ] ))
-        mudfuzz.send_string ( " " )
-
-class SendLook ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        mudfuzz.send_eol ()
-        mudfuzz.send_string ( "look" )
-
-        if ( random.random () < 0.5 ):
-            mudfuzz.send_string ( " " )
-            mudfuzz.send_string ( mudfuzz.get_random_remembered_word ())
-
-        mudfuzz.send_eol ()
-
-class Sleep ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        sleeptime = random.random () * 3
-        print ( "Sleeping for %f." % sleeptime )
-        time.sleep ( sleeptime )
-
-class SendRememberedWord ( FuzzAction ):
-    def execute ( self, mudfuzz, text ):
-        mudfuzz.send_string ( mudfuzz.get_random_remembered_word ())
-        mudfuzz.send_string ( " " )
+        if ( action.command == "sendrememberedword" ):
+            self.send_string ( self.get_random_remembered_word ())
+            self.send_string ( " " )
+        if ( action.command == "sendrandombytes" ):
+            self.send_buffer ( os.urandom ( random.randint ( 0, 1024 ) ) )
 
 class MudConnection:
 
