@@ -8,7 +8,7 @@ from telnetlib import Telnet
 from enum import Enum, auto
 from collections import deque
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict
 
 @dataclass
 class MudFuzzConfig:
@@ -18,6 +18,7 @@ class MudFuzzConfig:
     password: str
     user_prompt: str
     password_prompt: str
+    fuzz_cmds: Dict [ str, float ]
     valid_commands: List [ str ]
     valid_words: List [ str ]
 
@@ -30,23 +31,14 @@ class MudFuzzState(Enum):
 
 class MudFuzz:
 
-    def __init__ ( self, config_data, fuzz_cmds ):
+    def __init__ ( self, config_data, fuzz_cmd_instances ):
         self.config_data = config_data
         self.state = MudFuzzState.START
         self.connection = None
-        self.fuzz_cmds = fuzz_cmds
+        self.fuzz_cmd_instances = fuzz_cmd_instances
 
         #SendRandomBytes ( 0.005), 
-        self.actions = [ 
-                self.FuzzAction ( "send_random_string"  , 0.05), 
-                self.FuzzAction ( "send_eol"            , 0.25), 
-                self.FuzzAction ( "send_escape"         ,  0.1), 
-                self.FuzzAction ( "send_look"           ,  0.2), 
-                self.FuzzAction ( "send_command"        ,    1),
-                self.FuzzAction ( "send_word"           , 0.05),
-                self.FuzzAction ( "sleep"               ,  0.1),
-                self.FuzzAction ( "send_remembered_word", 0.75)
-            ]
+        self.actions = [ self.FuzzAction ( *x ) for x in config_data.fuzz_cmds.items() ]
 
         self.memory = deque ( [], 100 )
 
@@ -152,7 +144,7 @@ class MudFuzz:
         cmd_classname = snake_to_camel_case ( action.command )
 
         match = lambda x : x.__class__.__name__ == cmd_classname
-        matching_cmds = [ x for x in self.fuzz_cmds if match ( x ) ]
+        matching_cmds = [ x for x in self.fuzz_cmd_instances if match ( x ) ]
 
         if len ( matching_cmds ) < 1:
             raise Exception ( f"Unknown command: {action.command}" )

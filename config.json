@@ -5,6 +5,16 @@
     "password" : "testchar",
     "user_prompt" : "Please enter an account name:",
     "password_prompt" : "What is your password?",
+    "fuzz_cmds" : {
+       "send_random_string"   : 0.05, 
+       "send_eol"             : 0.25, 
+       "send_escape"          :  0.1, 
+       "send_look"            :  0.2, 
+       "send_command"         :    1,
+       "send_word"            : 0.05,
+       "sleep"                :  0.1,
+       "send_remembered_word" : 0.75
+    },
 
     "valid_commands" : [ "blink", "dance", "say hello" ]
     "valid_words" : [ "this", "that", "the other" ]
