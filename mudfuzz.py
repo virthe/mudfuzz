@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-import json, threading, queue, time, re, string, random, argparse, os
+import threading, queue
+import random
+import re, string, argparse, json
+import importlib, os, pkgutil, sys
 from telnetlib import Telnet
 from enum import Enum, auto
 from collections import deque
@@ -45,6 +48,7 @@ class MudFuzz:
             ]
 
         self.memory = deque ( [], 100 )
+
 
     def connect ( self ):
         if ( self.state is not MudFuzzState.START ):
@@ -145,46 +149,8 @@ class MudFuzz:
         command: str
 
     def execute_action ( self, action, text ):
+        pass
 
-        if ( action.command == "sendrandomstring" ):
-            r_string = "".join(
-            random.choices(string.printable, 
-            k=random.randint(0,128))) 
-            self.send_string ( r_string )
-        if ( action.command == "sendeol" ):
-            self.send_eol ()
-        if ( action.command == "sendescape" ):
-            self.send_eol ()
-            self.send_string ( "**" )
-            self.send_eol ()
-        if ( action.command == "sendlook" ):
-            self.send_eol ()
-            self.send_string ( "look" )
-
-            if ( random.random () < 0.5 ):
-                self.send_string ( " " )
-                self.send_string ( self.get_random_remembered_word ())
-
-            self.send_eol ()
-        if ( action.command == "sendcommand" ):
-            self.send_string ( 
-            random.choice ( self.config_data.valid_commands ))
-            self.send_string ( " " )
-        if ( action.command == "sendword" ):
-            self.send_string ( 
-            random.choice ( self.config_data.valid_words ))
-            self.send_string ( " " )
-
-        if ( action.command == "sleep" ):
-            sleeptime = random.random () * 3
-            print ( "Sleeping for %f." % sleeptime )
-            time.sleep ( sleeptime )
-
-        if ( action.command == "sendrememberedword" ):
-            self.send_string ( self.get_random_remembered_word ())
-            self.send_string ( " " )
-        if ( action.command == "sendrandombytes" ):
-            self.send_buffer ( os.urandom ( random.randint ( 0, 1024 ) ) )
 
 class MudConnection:
 
@@ -224,6 +190,31 @@ def strip_ansi ( text ):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
 
+def load_fuzz_commands ():
+    cmd_path = os.path.join ( os.path.dirname ( __file__ ), 
+                              "fuzz_commands" )
+    modules = pkgutil.iter_modules ( path=[ cmd_path ] )
+
+    loaded_cmds = []
+
+    for loader, mod_name, ispkg in modules:
+        if mod_name in sys.modules:
+            continue
+
+        loaded_mod = importlib.import_module (
+                f"fuzz_commands.{mod_name}" )
+
+        class_name = "".join([x.title() for x in mod_name.split("_")])
+
+        loaded_class = getattr ( loaded_mod, class_name, None )
+
+        if not loaded_class:
+            continue
+
+        instance = loaded_class ()
+        loaded_cmds.append ( instance )
+
+    return loaded_cmds
 
 def parse_config_file ( f ):
     data = json.load ( f )
@@ -237,13 +228,16 @@ def main ( **kwargs ):
     with ( open ( kwargs [ "config_path" ] ) ) as f:
         config_data = parse_config_file ( f )
 
-    mudfuzz = MudFuzz ( config_data )
+    fuzz_cmds = load_fuzz_commands ()
+    print ( fuzz_cmds )
 
-    mudfuzz.connect ()
-
-    while True:
-        mudfuzz.tick ()
-        time.sleep ( 0.1 )
+#    mudfuzz = MudFuzz ( config_data )
+#
+#    mudfuzz.connect ()
+#
+#    while True:
+#        mudfuzz.tick ()
+#        time.sleep ( 0.1 )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser ( description="Mud Fuzz",
