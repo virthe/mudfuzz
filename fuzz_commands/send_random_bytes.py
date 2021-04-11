@@ -1,4 +1,4 @@
-import random
+import random, os
 from fuzz_commands.fuzz_command import FuzzCommand
 
 class SendRandomBytes ( FuzzCommand ):
