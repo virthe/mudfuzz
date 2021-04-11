@@ -8,7 +8,8 @@ from telnetlib import Telnet
 from enum import Enum, auto
 from collections import deque
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Type
+from fuzz_commands.fuzz_command import FuzzCommand
 
 @dataclass
 class MudFuzzConfig:
@@ -37,8 +38,10 @@ class MudFuzz:
         self.connection = None
         self.fuzz_cmd_instances = fuzz_cmd_instances
 
-        #SendRandomBytes ( 0.005), 
-        self.actions = [ self.FuzzAction ( *x ) for x in config_data.fuzz_cmds.items() ]
+        #Create FuzzAction list from fuzz_cmds in config
+        cmd_inst = lambda x : self.get_cmd_instance ( x [ 0 ] )
+        self.actions = [ self.FuzzAction ( *x, cmd_inst( x ) ) for x in \
+                config_data.fuzz_cmds.items() ]
 
         self.memory = deque ( [], 100 )
 
@@ -137,21 +140,25 @@ class MudFuzz:
 
     @dataclass
     class FuzzAction:
-        command: str
+        cmd_str: str
         probability: float
+        cmd_instance: Type[FuzzCommand]
 
-    def execute_action ( self, action ):
-        cmd_classname = snake_to_camel_case ( action.command )
+    def get_cmd_instance ( self, cmd_str ):
+
+        cmd_classname = snake_to_camel_case ( cmd_str )
 
         match = lambda x : x.__class__.__name__ == cmd_classname
         matching_cmds = [ x for x in self.fuzz_cmd_instances if match ( x ) ]
 
         if len ( matching_cmds ) < 1:
-            raise Exception ( f"Unknown command: {action.command}" )
+            raise Exception ( f"Unknown command: {cmd_str}" )
 
-        cmd = matching_cmds [ 0 ]
+        return matching_cmds [ 0 ]
 
-        cmd.execute ( self )
+    def execute_action ( self, action ):
+        
+        action.cmd_instance.execute ( self )
 
 
 class MudConnection:
