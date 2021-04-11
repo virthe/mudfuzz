@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import threading, queue
+import threading, queue, time
 import random
 import re, string, argparse, json
 import importlib, os, pkgutil, sys
@@ -30,21 +30,22 @@ class MudFuzzState(Enum):
 
 class MudFuzz:
 
-    def __init__ ( self, config_data ):
+    def __init__ ( self, config_data, fuzz_cmds ):
         self.config_data = config_data
         self.state = MudFuzzState.START
         self.connection = None
+        self.fuzz_cmds = fuzz_cmds
 
         #SendRandomBytes ( 0.005), 
         self.actions = [ 
-                self.FuzzAction ( "abc", 0.05, "sendrandomstring" ), 
-                self.FuzzAction ( "abc", 0.25, "sendeol" ), 
-                self.FuzzAction ( "abc", 0.1, "sendescape" ), 
-                self.FuzzAction ( "abc", 0.2, "sendlook" ), 
-                self.FuzzAction ( "abc", 1,  "sendcommand" ),
-                self.FuzzAction ( "abc", 0.05,  "sendword"),
-                self.FuzzAction ( "abc", 0.1,  "sleep"),
-                self.FuzzAction ( "abc", 0.75 ,  "sendrememberedword" )
+                self.FuzzAction ( "send_random_string"  , 0.05), 
+                self.FuzzAction ( "send_eol"            , 0.25), 
+                self.FuzzAction ( "send_escape"         ,  0.1), 
+                self.FuzzAction ( "send_look"           ,  0.2), 
+                self.FuzzAction ( "send_command"        ,    1),
+                self.FuzzAction ( "send_word"           , 0.05),
+                self.FuzzAction ( "sleep"               ,  0.1),
+                self.FuzzAction ( "send_remembered_word", 0.75)
             ]
 
         self.memory = deque ( [], 100 )
@@ -105,7 +106,7 @@ class MudFuzz:
 
             weights = [ x.probability for x in self.actions ]
             action = random.choices ( self.actions, weights ) [ 0 ]
-            self.execute_action ( action, text )
+            self.execute_action ( action )
             return
 
     def send_string ( self, s ):
@@ -144,12 +145,18 @@ class MudFuzz:
 
     @dataclass
     class FuzzAction:
-        name: str
-        probability: float
         command: str
+        probability: float
 
-    def execute_action ( self, action, text ):
-        pass
+    def execute_action ( self, action ):
+        cmd_classname = snake_to_camel_case ( action.command )
+
+        match = lambda x : x.__class__.__name__ == cmd_classname
+        matching_cmds = [ x for x in self.fuzz_cmds if match ( x ) ]
+
+        cmd = matching_cmds [ 0 ]
+
+        cmd.execute ( self )
 
 
 class MudConnection:
@@ -190,6 +197,9 @@ def strip_ansi ( text ):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
 
+def snake_to_camel_case ( text ):
+    return "".join([x.title() for x in text.split("_")])
+
 def load_fuzz_commands ():
     cmd_path = os.path.join ( os.path.dirname ( __file__ ), 
                               "fuzz_commands" )
@@ -204,7 +214,7 @@ def load_fuzz_commands ():
         loaded_mod = importlib.import_module (
                 f"fuzz_commands.{mod_name}" )
 
-        class_name = "".join([x.title() for x in mod_name.split("_")])
+        class_name = snake_to_camel_case ( mod_name )
 
         loaded_class = getattr ( loaded_mod, class_name, None )
 
@@ -229,15 +239,14 @@ def main ( **kwargs ):
         config_data = parse_config_file ( f )
 
     fuzz_cmds = load_fuzz_commands ()
-    print ( fuzz_cmds )
 
-#    mudfuzz = MudFuzz ( config_data )
-#
-#    mudfuzz.connect ()
-#
-#    while True:
-#        mudfuzz.tick ()
-#        time.sleep ( 0.1 )
+    mudfuzz = MudFuzz ( config_data, fuzz_cmds )
+
+    mudfuzz.connect ()
+
+    while True:
+        mudfuzz.tick ()
+        time.sleep ( 0.1 )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser ( description="Mud Fuzz",
