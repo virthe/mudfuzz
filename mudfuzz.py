@@ -44,6 +44,7 @@ class MudFuzz:
                 config_data.fuzz_cmds.items() ]
 
         self.memory = deque ( [], 100 )
+        self.max_reads = 100
 
     def connect ( self ):
         if self.state is not MudFuzzState.START:
@@ -58,15 +59,21 @@ class MudFuzz:
         if self.connection is None:
             return
 
-        try:
-            rcv = self.connection.rcv_queue.get ( block=False )
-        except queue.Empty:
-            pass
-        else:
-            self._process_incoming_data ( rcv )
+        for _ in range ( self.max_reads ):
+            try:
+                rcv = self.connection.rcv_queue.get ( block=False )
+                self._process_incoming_data ( rcv )
+            except queue.Empty:
+                break
+
+        if self.state is MudFuzzState.FUZZING:
+            if len ( self.actions ) > 0:
+                weights = [ x.probability for x in self.actions ]
+                action = random.choices ( self.actions, weights ) [ 0 ]
+                self.execute_action ( action )
+                return
 
     def _process_incoming_data ( self, rcv ):
-
         try:
             text = rcv.decode ( 'utf-8' )
         except:
@@ -93,15 +100,7 @@ class MudFuzz:
                return
 
         if self.state is MudFuzzState.FUZZING:
-            if len ( self.actions ) == 0:
-                return
-
             self.remember_words ( text )
-
-            weights = [ x.probability for x in self.actions ]
-            action = random.choices ( self.actions, weights ) [ 0 ]
-            self.execute_action ( action )
-            return
 
     def send_string ( self, s ):
         b = s.encode ( "utf-8" )
@@ -144,7 +143,6 @@ class MudFuzz:
         cmd_instance: Type[FuzzCommand]
 
     def get_cmd_instance ( self, cmd_str ):
-
         cmd_classname = snake_to_camel_case ( cmd_str )
 
         match = lambda x : x.__class__.__name__ == cmd_classname
@@ -156,7 +154,6 @@ class MudFuzz:
         return matching_cmds [ 0 ]
 
     def execute_action ( self, action ):
-        
         action.cmd_instance.execute ( self )
 
 
@@ -177,22 +174,28 @@ class MudConnection:
         with Telnet ( self.host, self.port ) as tn:
             while True:
                 try:
-                    rcv = tn.read_until ( b"\r\n", 0.1 )
-                    self.rcv_queue.put ( rcv )
+                    self._read_telnet ( tn )
                 except EOFError:
                     break
 
                 try:
-                    send = self.send_queue.get( block=False )
-                except queue.Empty:
-                    pass
-                else:
-                    try:
-                        tn.write ( send )
-                    except OSError:
-                        break
+                    self._write_telnet ( tn )
+                except OSError:
+                    break
 
-                time.sleep ( 0.1 )
+                time.sleep ( 0.01 )
+    
+    def _read_telnet ( self, tn ):
+        rcv = tn.read_until ( b"\r\n", 0.1 )
+        self.rcv_queue.put ( rcv )
+
+    def _write_telnet ( self, tn ):
+        try:
+            send = self.send_queue.get( block=False )
+        except queue.Empty:
+            return
+
+        tn.write ( send )
 
 def strip_ansi ( text ):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
@@ -212,8 +215,7 @@ def load_fuzz_commands ():
         if mod_name in sys.modules:
             continue
 
-        loaded_mod = importlib.import_module (
-                f"fuzz_commands.{mod_name}" )
+        loaded_mod = importlib.import_module (f"fuzz_commands.{mod_name}" )
 
         class_name = snake_to_camel_case ( mod_name )
 
