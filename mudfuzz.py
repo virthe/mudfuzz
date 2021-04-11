@@ -45,9 +45,8 @@ class MudFuzz:
 
         self.memory = deque ( [], 100 )
 
-
     def connect ( self ):
-        if ( self.state is not MudFuzzState.START ):
+        if self.state is not MudFuzzState.START:
             return
         self.state = MudFuzzState.CONNECTING
 
@@ -56,7 +55,7 @@ class MudFuzz:
         self.state = MudFuzzState.AWAIT_USER
 
     def tick ( self ):
-        if ( self.connection is None ):
+        if self.connection is None:
             return
 
         try:
@@ -74,27 +73,27 @@ class MudFuzz:
             print ( "Bad string from MUD" )
             return
 
-        if ( len ( text ) > 0 ):
+        if len ( text ) > 0:
             print ( text )
 
-        if ( self.state is MudFuzzState.AWAIT_USER ):
-           if ( re.search ( self.config_data.user_prompt, text ) ):
+        if self.state is MudFuzzState.AWAIT_USER:
+           if re.search ( self.config_data.user_prompt, text ):
                print ( "User prompt detected." )
                self.send_string ( self.config_data.user )
                self.send_eol ()
                self.state = MudFuzzState.AWAIT_PASS
                return
 
-        if ( self.state is MudFuzzState.AWAIT_PASS ):
-           if ( re.search ( self.config_data.password_prompt, text ) ):
+        if self.state is MudFuzzState.AWAIT_PASS:
+           if re.search ( self.config_data.password_prompt, text ):
                print ( "Password prompt detected." )
                self.send_string ( self.config_data.password )
                self.send_eol ()
                self.state = MudFuzzState.FUZZING
                return
 
-        if ( self.state is MudFuzzState.FUZZING ):
-            if ( len ( self.actions ) == 0 ):
+        if self.state is MudFuzzState.FUZZING:
+            if len ( self.actions ) == 0:
                 return
 
             self.remember_words ( text )
@@ -112,7 +111,7 @@ class MudFuzz:
         self.send_string ( "\r\n" )
 
     def send_buffer ( self, b ):
-        if ( self.connection is None ):
+        if self.connection is None:
             return
 
         try:
@@ -134,7 +133,7 @@ class MudFuzz:
         self.memory.extend ( words )
 
     def get_random_remembered_word ( self ):
-        if ( len ( self.memory ) < 1 ):
+        if len ( self.memory ) < 1:
             return "memory"
         return random.choice ( self.memory ) 
 
