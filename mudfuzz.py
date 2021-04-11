@@ -154,6 +154,9 @@ class MudFuzz:
         match = lambda x : x.__class__.__name__ == cmd_classname
         matching_cmds = [ x for x in self.fuzz_cmds if match ( x ) ]
 
+        if len ( matching_cmds ) < 1:
+            raise Exception ( f"Unknown command: {action.command}" )
+
         cmd = matching_cmds [ 0 ]
 
         cmd.execute ( self )
