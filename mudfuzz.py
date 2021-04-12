@@ -5,7 +5,7 @@ import random
 import re, string, argparse, json
 import importlib, os, pkgutil, sys
 from telnetlib import Telnet
-from enum import Enum, auto
+from enum import Flag, auto
 from collections import deque
 from dataclasses import dataclass
 from typing import List, Dict, Type
@@ -19,16 +19,21 @@ class MudFuzzConfig:
     password: str
     user_prompt: str
     password_prompt: str
+    error_pattern: str
+    error_pause: bool
     fuzz_cmds: Dict [ str, float ]
     valid_commands: List [ str ]
     valid_words: List [ str ]
 
-class MudFuzzState(Enum):
+class MudFuzzState(Flag):
     START = auto()
     CONNECTING = auto()
     AWAIT_USER = auto()
     AWAIT_PASS = auto()
     FUZZING = auto ()
+    USER_PAUSE = auto ()
+    ERROR_PAUSE = auto ()
+    PAUSE = USER_PAUSE | ERROR_PAUSE
 
 class MudFuzz:
 
@@ -59,6 +64,12 @@ class MudFuzz:
         if self.connection is None:
             return
 
+        print ( self.state )
+
+        if self.is_paused ():
+            print("Paused")
+            return
+
         for _ in range ( self.max_reads ):
             try:
                 rcv = self.connection.rcv_queue.get ( block=False )
@@ -81,7 +92,13 @@ class MudFuzz:
             return
 
         if len ( text ) > 0:
-            print ( text )
+            print ( text, end="" )
+
+        if re.search ( self.config_data.error_pattern, text ):
+            self.error_detected ()
+            if self.config_data.error_pause:
+                self.pause ( MudFuzzState.ERROR_PAUSE, self.state )
+                return
 
         if self.state is MudFuzzState.AWAIT_USER:
            if re.search ( self.config_data.user_prompt, text ):
@@ -101,6 +118,26 @@ class MudFuzz:
 
         if self.state is MudFuzzState.FUZZING:
             self.remember_words ( text )
+
+    def error_detected ( self ):
+        print ( "Error detected!" )
+
+    def pause ( self, pause_state, unpause_state ):
+        if not pause_state & MudFuzzState.PAUSE:
+            raise Exception ( "Bad pause state." )
+        if unpause_state & MudFuzzState.PAUSE:
+            raise Exception ( "Bad unpause state." )
+        self.state = pause_state
+        self.unpause_state = unpause_state
+
+    def is_paused ( self ):
+        return self.state & MudFuzzState.PAUSE
+
+    def unpause ( self ):
+        if not self.is_paused ():
+            raise Exception ( "Called unpause when not paused." )
+        self.state = self.unpause_state
+        delattr ( self, "unpause_state" )
 
     def send_string ( self, s ):
         b = s.encode ( "utf-8" )

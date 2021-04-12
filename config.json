@@ -5,6 +5,8 @@
     "password" : "testchar",
     "user_prompt" : "Please enter an account name:",
     "password_prompt" : "What is your password?",
+    "error_pattern" : "An error has occurred.",
+    "error_pause" : true,
     "fuzz_cmds" : {
        "send_random_string"   : 0.05, 
        "send_eol"             : 0.25, 
@@ -17,6 +19,6 @@
        "send_random_bytes"    : 0.1
     },
 
-    "valid_commands" : [ "blink", "dance", "say hello" ]
+    "valid_commands" : [ "blink", "dance", "say hello" ],
     "valid_words" : [ "this", "that", "the other" ]
 }
