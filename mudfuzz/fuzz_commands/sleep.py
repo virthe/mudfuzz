@@ -1,5 +1,5 @@
 import random, time
-from fuzz_commands.fuzz_command import FuzzCommand
+from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 
 class Sleep ( FuzzCommand ):
     def execute ( self, mudfuzz ):

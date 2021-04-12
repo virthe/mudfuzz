@@ -1,6 +1,12 @@
-import re
+import random, re, queue
 from enum import Flag, auto
-import random
+from dataclasses import dataclass
+from typing import Type
+from collections import deque
+
+from mudfuzz.util import *
+from mudfuzz.mud_connection import MudConnection
+from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 
 class FuzzerState(Flag):
     START = auto()

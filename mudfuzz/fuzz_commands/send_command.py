@@ -1,5 +1,5 @@
 import random
-from fuzz_commands.fuzz_command import FuzzCommand
+from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 
 class SendCommand ( FuzzCommand ):
     def execute ( self, mudfuzz ):

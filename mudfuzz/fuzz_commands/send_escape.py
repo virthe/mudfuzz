@@ -1,4 +1,4 @@
-from fuzz_commands.fuzz_command import FuzzCommand
+from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 
 class SendEscape ( FuzzCommand ):
     def execute ( self, mudfuzz ):

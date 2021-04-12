@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
+import time
 import re, string, argparse, json
-import importlib, os, pkgutil, sys
-from collections import deque
+import importlib, pkgutil, sys
 from dataclasses import dataclass
 from typing import List, Dict, Type
+from pathlib import Path
 
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 from mudfuzz.mud_fuzzer import MudFuzzer
+from mudfuzz.util import *
 
 @dataclass
 class MudFuzzConfig:
@@ -25,8 +27,8 @@ class MudFuzzConfig:
 
 
 def load_fuzz_commands ():
-    cmd_path = os.path.join ( os.path.dirname ( __file__ ), 
-                              "fuzz_commands" )
+    cmd_path = Path ( ".", "mudfuzz", "fuzz_commands" )
+
     modules = pkgutil.iter_modules ( path=[ cmd_path ] )
 
     loaded_cmds = []
@@ -35,7 +37,8 @@ def load_fuzz_commands ():
         if mod_name in sys.modules:
             continue
 
-        loaded_mod = importlib.import_module (f"fuzz_commands.{mod_name}" )
+        loaded_mod = importlib.import_module (
+                f"mudfuzz.fuzz_commands.{mod_name}" )
 
         class_name = snake_to_camel_case ( mod_name )
 
