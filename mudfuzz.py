@@ -67,11 +67,9 @@ def main ( **kwargs ):
     fuzz_cmds = load_fuzz_commands ()
 
     mudfuzz = MudFuzzer ( config_data, fuzz_cmds )
-
-    mudfuzz.connect ()
+    mudfuzz.start ()
 
     while True:
-        mudfuzz.tick ()
         time.sleep ( 0.1 )
 
 if __name__ == "__main__":

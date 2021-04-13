@@ -1,3 +1,4 @@
+import time
 import random, re
 from enum import Flag, auto
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from collections import deque
 from mudfuzz.util import *
 from mudfuzz.mud_connection import MudConnection
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
+from mudfuzz.io_thread import IOThread
 
 class FuzzerState(Flag):
     START = auto()
@@ -34,7 +36,21 @@ class MudFuzzer:
         self.memory = deque ( [], 100 )
         self.max_reads = 100
 
-    def connect ( self ):
+    def start ( self ):
+        if self.state is not FuzzerState.START:
+            return
+
+        self._connect ()
+        
+        self.mf_thread = IOThread ( self._run )
+
+    def _run ( self, input_queue, output_queue ):
+        while True:
+            self._tick ()
+            time.sleep ( 0.1 )
+
+
+    def _connect ( self ):
         if self.state is not FuzzerState.START:
             return
         self.state = FuzzerState.CONNECTING
@@ -43,7 +59,7 @@ class MudFuzzer:
                                           self.config_data.mud_port )
         self.state = FuzzerState.AWAIT_USER
 
-    def tick ( self ):
+    def _tick ( self ):
         if self.connection is None:
             return
 
