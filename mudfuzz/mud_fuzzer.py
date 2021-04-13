@@ -1,4 +1,4 @@
-import random, re, queue
+import random, re
 from enum import Flag, auto
 from dataclasses import dataclass
 from typing import Type
@@ -54,10 +54,11 @@ class MudFuzzer:
             return
 
         for _ in range ( self.max_reads ):
-            try:
-                rcv = self.connection.rcv_queue.get ( block=False )
+            rcv = self.connection.read ()
+
+            if rcv is not None:
                 self._process_incoming_data ( rcv )
-            except queue.Empty:
+            else:
                 break
 
         if self.state is FuzzerState.FUZZING:
@@ -139,7 +140,7 @@ class MudFuzzer:
         except:
             print ( "Sending garbage." )
 
-        self.connection.send_queue.put_nowait ( b )
+        self.connection.write ( b )
 
     def remember_words ( self, text ):
         try:
@@ -175,5 +176,4 @@ class MudFuzzer:
 
     def execute_action ( self, action ):
         action.cmd_instance.execute ( self )
-
 
