@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Type
 from pathlib import Path
 
+import mudfuzz.ui as UI
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 from mudfuzz.mud_fuzzer import MudFuzzer
 from mudfuzz.util import *
@@ -60,6 +61,9 @@ def main ( **kwargs ):
     with ( open ( kwargs [ "config_path" ] ) ) as f:
         config_data = parse_config_file ( f )
 
+    if not kwargs [ "no_ui" ]:
+        UI.start_ui ()
+
     fuzz_cmds = load_fuzz_commands ()
 
     mudfuzz = MudFuzzer ( config_data, fuzz_cmds )
@@ -73,6 +77,11 @@ def main ( **kwargs ):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser ( description="Mud Fuzz",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter )
+
     parser.add_argument( "--config", help = "Path to config.json" )
+
+    parser.add_argument( "--no_ui", action="store_true",
+            help = "Run without user interface." )
+
     args = parser.parse_args ()
-    main ( config_path=args.config )
+    main ( config_path=args.config, no_ui=args.no_ui )
