@@ -28,9 +28,7 @@ class MudFuzzConfig:
 
 def load_fuzz_commands ():
     cmd_path = Path ( ".", "mudfuzz", "fuzz_commands" )
-
     modules = pkgutil.iter_modules ( path=[ cmd_path ] )
-
     loaded_cmds = []
 
     for loader, mod_name, ispkg in modules:
@@ -39,9 +37,7 @@ def load_fuzz_commands ():
 
         loaded_mod = importlib.import_module (
                 f"mudfuzz.fuzz_commands.{mod_name}" )
-
         class_name = snake_to_camel_case ( mod_name )
-
         loaded_class = getattr ( loaded_mod, class_name, None )
 
         if not loaded_class:
