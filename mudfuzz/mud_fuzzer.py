@@ -9,27 +9,7 @@ from mudfuzz.util import *
 from mudfuzz.mud_connection import MudConnection
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 
-@dataclass
-class MudFuzzEvent:
-    pass
-
-@dataclass
-class ReceivedText ( MudFuzzEvent ):
-    text: str
-
-@dataclass
-class ReceivedGarbled ( MudFuzzEvent ):
-    size: int
-
-@dataclass
-class ErrorDetected ( MudFuzzEvent ):
-    pass
-
-@dataclass
-class FuzzerStateChanged ( MudFuzzEvent ):
-    state: Type [ MudFuzzEvent ]
-
-class FuzzerState(Flag):
+class MudFuzzerState(Flag):
     START = auto()
     CONNECTING = auto()
     AWAIT_USER = auto()
@@ -39,11 +19,38 @@ class FuzzerState(Flag):
     ERROR_PAUSE = auto ()
     PAUSE = USER_PAUSE | ERROR_PAUSE
 
+@dataclass
+class MudFuzzerEvent:
+    pass
+
+@dataclass
+class ReceivedText ( MudFuzzerEvent ):
+    text: str
+
+@dataclass
+class ReceivedGarbled ( MudFuzzerEvent ):
+    size: int
+
+@dataclass
+class SentText ( MudFuzzerEvent ):
+    text: str
+
+@dataclass
+class SentGarbled ( MudFuzzerEvent ):
+    size: int
+
+@dataclass
+class ErrorDetected ( MudFuzzerEvent ):
+    pass
+
+@dataclass
+class FuzzerStateChanged ( MudFuzzerEvent ):
+    state: Type [ MudFuzzerState ]
+
 class MudFuzzer:
 
     def __init__ ( self, config_data, fuzz_cmd_instances ):
         self.config_data = config_data
-        self.state = FuzzerState.START
         self.connection = None
         self.fuzz_cmd_instances = fuzz_cmd_instances
 
@@ -56,9 +63,10 @@ class MudFuzzer:
         self.max_reads = 100
 
         self.fuzz_event_queue = queue.Queue ()
+        self._change_state ( MudFuzzerState.START )
 
     def start ( self ):
-        if self.state is not FuzzerState.START:
+        if self.state is not MudFuzzerState.START:
             return
 
         self._connect ()
@@ -81,13 +89,13 @@ class MudFuzzer:
             time.sleep ( 0.1 )
 
     def _connect ( self ):
-        if self.state is not FuzzerState.START:
+        if self.state is not MudFuzzerState.START:
             return
-        self.state = FuzzerState.CONNECTING
+        self._change_state ( MudFuzzerState.CONNECTING )
 
         self.connection = MudConnection ( self.config_data.mud_host,
                                           self.config_data.mud_port )
-        self.state = FuzzerState.AWAIT_USER
+        self._change_state ( MudFuzzerState.AWAIT_USER )
 
     def _tick ( self ):
         if self.connection is None:
@@ -104,12 +112,16 @@ class MudFuzzer:
             else:
                 break
 
-        if self.state is FuzzerState.FUZZING:
+        if self.state is MudFuzzerState.FUZZING:
             if len ( self.actions ) > 0:
                 weights = [ x.probability for x in self.actions ]
                 action = random.choices ( self.actions, weights ) [ 0 ]
                 self.execute_action ( action )
                 return
+
+    def _change_state ( self, s ):
+        self.state = s
+        self._post_fuzz_event ( FuzzerStateChanged ( s ) )
 
     def _process_incoming_data ( self, rcv ):
         try:
@@ -124,44 +136,44 @@ class MudFuzzer:
         if re.search ( self.config_data.error_pattern, text ):
             self.error_detected ()
             if self.config_data.error_pause:
-                self.pause ( FuzzerState.ERROR_PAUSE, self.state )
+                self.pause ( MudFuzzerState.ERROR_PAUSE, self.state )
                 return
 
-        if self.state is FuzzerState.AWAIT_USER:
+        if self.state is MudFuzzerState.AWAIT_USER:
            if re.search ( self.config_data.user_prompt, text ):
                self.send_string ( self.config_data.user )
                self.send_eol ()
-               self.state = FuzzerState.AWAIT_PASS
+               self._change_state ( MudFuzzerState.AWAIT_PASS )
                return
 
-        if self.state is FuzzerState.AWAIT_PASS:
+        if self.state is MudFuzzerState.AWAIT_PASS:
            if re.search ( self.config_data.password_prompt, text ):
                self.send_string ( self.config_data.password )
                self.send_eol ()
-               self.state = FuzzerState.FUZZING
+               self._change_state ( MudFuzzerState.FUZZING )
                return
 
-        if self.state is FuzzerState.FUZZING:
+        if self.state is MudFuzzerState.FUZZING:
             self.remember_words ( text )
 
     def error_detected ( self ):
         self._post_fuzz_event ( ErrorDetected () )
 
     def pause ( self, pause_state, unpause_state ):
-        if not pause_state & FuzzerState.PAUSE:
+        if not pause_state & MudFuzzerState.PAUSE:
             raise Exception ( "Bad pause state." )
-        if unpause_state & FuzzerState.PAUSE:
+        if unpause_state & MudFuzzerState.PAUSE:
             raise Exception ( "Bad unpause state." )
-        self.state = pause_state
+        self._change_state ( pause_state )
         self.unpause_state = unpause_state
 
     def is_paused ( self ):
-        return self.state & FuzzerState.PAUSE
+        return self.state & MudFuzzerState.PAUSE
 
     def unpause ( self ):
         if not self.is_paused ():
             raise Exception ( "Called unpause when not paused." )
-        self.state = self.unpause_state
+        self._change_state ( self.unpause_state )
         delattr ( self, "unpause_state" )
 
     def send_string ( self, s ):
@@ -175,13 +187,14 @@ class MudFuzzer:
         if self.connection is None:
             return
 
-        try:
-            print ( "Sending : %s" % 
-                    ( b.decode ( "utf-8" ).encode ( "unicode_escape" ) ) )
-        except:
-            print ( "Sending garbage." )
-
         self.connection.write ( b )
+
+        try:
+            text = b.decode ( "utf-8" ).encode ( "unicode_escape" ) 
+        except:
+            self._post_fuzz_event ( SentGarbled ( len ( b ) ) )
+        else:
+            self._post_fuzz_event ( SentText ( text ) )
 
     def remember_words ( self, text ):
         try:

@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from typing import List, Dict 
 from pathlib import Path
 
+import mudfuzz.mud_fuzzer as MF
 import mudfuzz.ui as UI
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
-from mudfuzz.mud_fuzzer import MudFuzzer
 from mudfuzz.util import *
 
 @dataclass
@@ -57,10 +57,11 @@ def run_no_ui ( config_data, mudfuzz ):
     mudfuzz.start ()
 
     while True:
-        e = mudfuzz.get_fuzz_event ()
-
-        if e is not None:
-            print ( e )
+        while not mudfuzz.fuzz_event_queue.empty ():
+            e = mudfuzz.get_fuzz_event ()
+            if e.__class__ in [ MF.FuzzerStateChanged, MF.ErrorDetected ]:
+                print ( e )
+        time.sleep ( 0.1 )
 
 def main ( **kwargs ):
     print ( "MUD Fuzz" )
@@ -71,7 +72,7 @@ def main ( **kwargs ):
         config_data = parse_config_file ( f )
 
     fuzz_cmds = load_fuzz_commands ()
-    mudfuzz = MudFuzzer ( config_data, fuzz_cmds )
+    mudfuzz = MF.MudFuzzer ( config_data, fuzz_cmds )
 
     if kwargs [ "no_ui" ]:
         run_no_ui ( config_data, mudfuzz )
