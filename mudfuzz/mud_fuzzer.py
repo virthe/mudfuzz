@@ -10,6 +10,18 @@ from mudfuzz.mud_connection import MudConnection
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 from mudfuzz.io_thread import IOThread
 
+@dataclass
+class MudFuzzEvent:
+    pass
+
+@dataclass
+class ReceivedText:
+    text: str
+
+@dataclass
+class ReceivedGarbled:
+    size: int
+
 class FuzzerState(Flag):
     START = auto()
     CONNECTING = auto()
