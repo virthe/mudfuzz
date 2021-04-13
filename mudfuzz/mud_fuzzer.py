@@ -8,7 +8,6 @@ from collections import deque
 from mudfuzz.util import *
 from mudfuzz.mud_connection import MudConnection
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
-from mudfuzz.messages import MessageQueue
 
 @dataclass
 class MudFuzzEvent:
