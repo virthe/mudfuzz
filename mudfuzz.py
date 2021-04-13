@@ -57,7 +57,10 @@ def run_no_ui ( config_data, mudfuzz ):
     mudfuzz.start ()
 
     while True:
-        time.sleep ( 0.1 )
+        e = mudfuzz.get_fuzz_event ()
+
+        if e is not None:
+            print ( e )
 
 def main ( **kwargs ):
     print ( "MUD Fuzz" )

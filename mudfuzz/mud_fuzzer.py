@@ -1,4 +1,4 @@
-import time, threading
+import time, threading, queue
 import random, re
 from enum import Flag, auto
 from dataclasses import dataclass
@@ -14,12 +14,16 @@ class MudFuzzEvent:
     pass
 
 @dataclass
-class ReceivedText:
+class ReceivedText ( MudFuzzEvent ):
     text: str
 
 @dataclass
-class ReceivedGarbled:
+class ReceivedGarbled ( MudFuzzEvent ):
     size: int
+
+@dataclass
+class ErrorDetected ( MudFuzzEvent ):
+    pass
 
 class FuzzerState(Flag):
     START = auto()
@@ -47,6 +51,8 @@ class MudFuzzer:
         self.memory = deque ( [], 100 )
         self.max_reads = 100
 
+        self.fuzz_event_queue = queue.Queue ()
+
     def start ( self ):
         if self.state is not FuzzerState.START:
             return
@@ -57,11 +63,18 @@ class MudFuzzer:
                 daemon=True )
         self.thread.start ()
 
+    def get_fuzz_event ( self ):
+        if self.fuzz_event_queue.empty ():
+            return None
+        return self.fuzz_event_queue.get ( block=False )
+
+    def _post_fuzz_event ( self, e ):
+        self.fuzz_event_queue.put ( e )
+
     def _run ( self ):
         while True:
             self._tick ()
             time.sleep ( 0.1 )
-
 
     def _connect ( self ):
         if self.state is not FuzzerState.START:
@@ -76,10 +89,7 @@ class MudFuzzer:
         if self.connection is None:
             return
 
-        print ( self.state )
-
         if self.is_paused ():
-            print("Paused")
             return
 
         for _ in range ( self.max_reads ):
@@ -101,11 +111,11 @@ class MudFuzzer:
         try:
             text = rcv.decode ( 'utf-8' )
         except:
-            print ( "Bad string from MUD" )
+            self._post_fuzz_event ( ReceivedGarbled ( len ( rcv ) ) )
             return
 
         if len ( text ) > 0:
-            print ( text, end="" )
+            self._post_fuzz_event ( ReceivedText ( text ) )
 
         if re.search ( self.config_data.error_pattern, text ):
             self.error_detected ()
@@ -115,7 +125,6 @@ class MudFuzzer:
 
         if self.state is FuzzerState.AWAIT_USER:
            if re.search ( self.config_data.user_prompt, text ):
-               print ( "User prompt detected." )
                self.send_string ( self.config_data.user )
                self.send_eol ()
                self.state = FuzzerState.AWAIT_PASS
@@ -123,7 +132,6 @@ class MudFuzzer:
 
         if self.state is FuzzerState.AWAIT_PASS:
            if re.search ( self.config_data.password_prompt, text ):
-               print ( "Password prompt detected." )
                self.send_string ( self.config_data.password )
                self.send_eol ()
                self.state = FuzzerState.FUZZING
@@ -133,7 +141,7 @@ class MudFuzzer:
             self.remember_words ( text )
 
     def error_detected ( self ):
-        print ( "Error detected!" )
+        self._post_fuzz_event ( ErrorDetected () )
 
     def pause ( self, pause_state, unpause_state ):
         if not pause_state & FuzzerState.PAUSE:
