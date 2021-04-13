@@ -1,7 +1,7 @@
-import time, queue
+import time, threading
+import queue
 from telnetlib import Telnet
 
-from mudfuzz.io_thread import IOThread
 
 class MudConnection:
 
@@ -9,44 +9,50 @@ class MudConnection:
         self.host = host
         self.port = port
 
-        self.tn_thread = IOThread ( self._telnet_process )
+        self.input_queue = queue.Queue ()
+        self.output_queue = queue.Queue ()
+
+        self.thread = threading.Thread ( target=self._telnet_process, 
+                daemon=True )
+        self.thread.start ()
+
 
     def read ( self ):
         try:
-            data = self.tn_thread.output_queue.get ( block=False )
+            data = self.output_queue.get ( block=False )
         except queue.Empty:
             return None
         else:
             return data
 
     def write ( self, data ):
-        self.tn_thread.input_queue.put_nowait ( data )
+        self.input_queue.put_nowait ( data )
 
-    def _telnet_process ( self, input_queue, output_queue ):
+    def _telnet_process ( self ):
         with Telnet ( self.host, self.port ) as tn:
             while True:
                 try:
-                    self._read_telnet ( tn, output_queue )
+                    self._read_telnet ( tn )
                 except EOFError:
                     break
 
                 try:
-                    self._write_telnet ( tn, input_queue )
+                    self._write_telnet ( tn )
                 except OSError:
                     break
 
                 time.sleep ( 0.01 )
     
-    def _read_telnet ( self, tn, output_queue ):
+    def _read_telnet ( self, tn ):
         rcv = tn.read_until ( b"\r\n", 0.1 )
-        output_queue.put ( rcv )
+        self.output_queue.put_nowait ( rcv )
 
-    def _write_telnet ( self, tn, input_queue ):
-        try:
-            send = input_queue.get( block=False )
-        except queue.Empty:
-            return
+    def _write_telnet ( self, tn ):
 
-        tn.write ( send )
+        while not self.input_queue.empty ():
+            send = self.input_queue.get (block=False)
+
+            if send is not None:
+                tn.write ( send )
 
 

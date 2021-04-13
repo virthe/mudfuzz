@@ -53,6 +53,12 @@ def parse_config_file ( f ):
     data = json.load ( f )
     return MudFuzzConfig ( **data )
 
+def run_no_ui ( config_data, mudfuzz ):
+    mudfuzz.start ()
+
+    while True:
+        time.sleep ( 0.1 )
+
 def main ( **kwargs ):
     print ( "MUD Fuzz" )
 
@@ -61,16 +67,14 @@ def main ( **kwargs ):
     with ( open ( kwargs [ "config_path" ] ) ) as f:
         config_data = parse_config_file ( f )
 
-    if not kwargs [ "no_ui" ]:
-        UI.start_ui ()
-
     fuzz_cmds = load_fuzz_commands ()
-
     mudfuzz = MudFuzzer ( config_data, fuzz_cmds )
-    mudfuzz.start ()
 
-    while True:
-        time.sleep ( 0.1 )
+    if kwargs [ "no_ui" ]:
+        run_no_ui ( config_data, mudfuzz )
+    else:
+        UI.start_ui ( config_data, mudfuzz )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser ( description="Mud Fuzz",

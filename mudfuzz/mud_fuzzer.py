@@ -1,4 +1,4 @@
-import time
+import time, threading
 import random, re
 from enum import Flag, auto
 from dataclasses import dataclass
@@ -8,7 +8,7 @@ from collections import deque
 from mudfuzz.util import *
 from mudfuzz.mud_connection import MudConnection
 from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
-from mudfuzz.io_thread import IOThread
+from mudfuzz.messages import MessageQueue
 
 @dataclass
 class MudFuzzEvent:
@@ -54,9 +54,11 @@ class MudFuzzer:
 
         self._connect ()
         
-        self.mf_thread = IOThread ( self._run )
+        self.thread = threading.Thread ( target=self._run, 
+                daemon=True )
+        self.thread.start ()
 
-    def _run ( self, input_queue, output_queue ):
+    def _run ( self ):
         while True:
             self._tick ()
             time.sleep ( 0.1 )
