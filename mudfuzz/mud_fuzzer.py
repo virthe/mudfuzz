@@ -25,6 +25,10 @@ class ReceivedGarbled ( MudFuzzEvent ):
 class ErrorDetected ( MudFuzzEvent ):
     pass
 
+@dataclass
+class FuzzerStateChanged ( MudFuzzEvent ):
+    state: Type [ MudFuzzEvent ]
+
 class FuzzerState(Flag):
     START = auto()
     CONNECTING = auto()

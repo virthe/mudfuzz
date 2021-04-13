@@ -4,7 +4,7 @@ import time
 import re, string, argparse, json
 import importlib, pkgutil, sys
 from dataclasses import dataclass
-from typing import List, Dict, Type
+from typing import List, Dict 
 from pathlib import Path
 
 import mudfuzz.ui as UI
