@@ -54,8 +54,8 @@ def parse_config_file ( f ):
     return MudFuzzConfig ( **data )
 
 def run_no_ui ( config_data, mudfuzzer ):
+    print ( "MUD Fuzz" )
     mudfuzzer.start ()
-
     while True:
         while not mudfuzzer.fuzz_event_queue.empty ():
             e = mudfuzzer.get_fuzz_event ()
@@ -64,8 +64,6 @@ def run_no_ui ( config_data, mudfuzzer ):
         time.sleep ( 0.1 )
 
 def main ( **kwargs ):
-    print ( "MUD Fuzz" )
-
     config_data = None
 
     with ( open ( kwargs [ "config_path" ] ) ) as f:
@@ -79,7 +77,6 @@ def main ( **kwargs ):
     else:
         UI.start_ui ( config_data, mudfuzzer )
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser ( description="Mud Fuzz",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter )
@@ -90,4 +87,8 @@ if __name__ == "__main__":
             help = "Run without user interface." )
 
     args = parser.parse_args ()
-    main ( config_path=args.config, no_ui=args.no_ui )
+
+    try:
+        main ( config_path=args.config, no_ui=args.no_ui )
+    except KeyboardInterrupt:
+        pass

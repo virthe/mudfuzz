@@ -54,7 +54,7 @@ def handle_mudfuzzer_event ( app, mudfuzzer_event ):
 
     if ( type(mudfuzzer_event) is MF.ReceivedText ):
         control = app.rcv_text
-        display_text ( app, control, f"{mudfuzzer_event.text}" )
+        display_text ( app, control, mudfuzzer_event.text )
 
     if ( type(mudfuzzer_event) is MF.SentBuffer ):
         control = app.sent_text
