@@ -71,8 +71,15 @@ def handle_mudfuzzer_event ( app, mudfuzzer_event ):
         text = mudfuzzer_event.b.decode ( encoding="utf-8", errors="replace" )
         display_text (  app, control, text )
 
-def display_text ( app, control, text ):
+def display_text ( app, buff, text ):
     text = strip_ansi ( text )
     text = text.replace ( "\r", "" )
-    control.insert_text ( text )
+    buff.insert_text ( text )
+
+    if buff.document.line_count > 200:
+        buff.cursor_position = 0
+        buff.cursor_down ( 100 )
+        buff.delete_before_cursor ( buff.cursor_position )
+        buff.cursor_position = len ( buff.document.text )
+
     app.invalidate ()
