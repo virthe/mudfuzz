@@ -53,12 +53,12 @@ def parse_config_file ( f ):
     data = json.load ( f )
     return MudFuzzConfig ( **data )
 
-def run_no_ui ( config_data, mudfuzz ):
-    mudfuzz.start ()
+def run_no_ui ( config_data, mudfuzzer ):
+    mudfuzzer.start ()
 
     while True:
-        while not mudfuzz.fuzz_event_queue.empty ():
-            e = mudfuzz.get_fuzz_event ()
+        while not mudfuzzer.fuzz_event_queue.empty ():
+            e = mudfuzzer.get_fuzz_event ()
             if e.__class__ in [ MF.FuzzerStateChanged, MF.ErrorDetected ]:
                 print ( e )
         time.sleep ( 0.1 )
@@ -72,12 +72,12 @@ def main ( **kwargs ):
         config_data = parse_config_file ( f )
 
     fuzz_cmds = load_fuzz_commands ()
-    mudfuzz = MF.MudFuzzer ( config_data, fuzz_cmds )
+    mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds )
 
     if kwargs [ "no_ui" ]:
-        run_no_ui ( config_data, mudfuzz )
+        run_no_ui ( config_data, mudfuzzer )
     else:
-        UI.start_ui ( config_data, mudfuzz )
+        UI.start_ui ( config_data, mudfuzzer )
 
 
 if __name__ == "__main__":
