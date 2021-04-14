@@ -2,17 +2,23 @@ import threading, time
 
 from prompt_toolkit import Application
 from prompt_toolkit.layout.containers import VSplit, Window
-from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.layout.controls import FormattedTextControl, BufferControl
+from prompt_toolkit.filters import Always
+from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
 
+import mudfuzz.mud_fuzzer as MF
+from mudfuzz.util import *
+
 def start_ui ( config_data, mudfuzzer ):
-    rcv_text = FormattedTextControl(text='Hello world')
+    rcv_text = Buffer()
+    sent_text = Buffer()
 
     root_container = VSplit([
-        Window(content=rcv_text),
+        Window(content=BufferControl(rcv_text)),
         Window(width=1, char='|'),
-        Window(content=FormattedTextControl(text='Hello world'))
+        Window(content=BufferControl(sent_text))
     ])
 
     layout = Layout ( root_container )
@@ -25,6 +31,7 @@ def start_ui ( config_data, mudfuzzer ):
 
     app = Application ( full_screen=True, layout=layout, key_bindings=kb )
     app.rcv_text = rcv_text
+    app.sent_text = sent_text
     mf_monitor = MudfuzzMonitor ( app, mudfuzzer )
     app.run ()
 
@@ -44,4 +51,15 @@ class MudfuzzMonitor:
             time.sleep ( 0.1 )
 
 def handle_mudfuzzer_event ( app, mudfuzzer_event ):
-    app.rcv_text.text += f"{mudfuzzer_event}"+"\n"
+
+    if ( type(mudfuzzer_event) is MF.ReceivedText ):
+        control = app.rcv_text
+        display_text ( app, control, f"{mudfuzzer_event.text}" )
+
+    if ( type(mudfuzzer_event) is MF.SentText ):
+        control = app.sent_text
+        display_text (  app, control, f"{mudfuzzer_event.text}" + "\n" )
+
+def display_text ( app, control, text ):
+    control.insert_text ( strip_ansi ( text ) )
+    app.invalidate ()
