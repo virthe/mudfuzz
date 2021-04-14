@@ -1,7 +1,7 @@
 import threading, time
 
 from prompt_toolkit import Application
-from prompt_toolkit.layout.containers import VSplit, Window
+from prompt_toolkit.layout.containers import VSplit, HSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl, BufferControl
 from prompt_toolkit.filters import Always
 from prompt_toolkit.buffer import Buffer
@@ -12,13 +12,23 @@ import mudfuzz.mud_fuzzer as MF
 from mudfuzz.util import *
 
 def start_ui ( config_data, mudfuzzer ):
+
+    title_str = "░█▄▒▄█░█▒█░█▀▄▒█▀░█▒█░▀█▀░▀█▀\n"+ \
+                "░█▒▀▒█░▀▄█▒█▄▀░█▀░▀▄█░█▄▄░█▄▄"
+
     rcv_text = Buffer()
     sent_text = Buffer()
 
-    root_container = VSplit([
+    buffer_container = VSplit([
         Window(content=BufferControl(rcv_text)),
         Window(width=1, char='|'),
         Window(content=BufferControl(sent_text))
+    ])
+
+    root_container = HSplit([
+        Window(height=2, content=FormattedTextControl(text=title_str)),
+        Window(height=1, char='-'),
+        buffer_container
     ])
 
     layout = Layout ( root_container )
