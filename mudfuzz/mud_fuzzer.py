@@ -32,12 +32,8 @@ class ReceivedGarbled ( MudFuzzerEvent ):
     size: int
 
 @dataclass
-class SentText ( MudFuzzerEvent ):
-    text: str
-
-@dataclass
-class SentGarbled ( MudFuzzerEvent ):
-    size: int
+class SentBuffer ( MudFuzzerEvent ):
+    b: bytes
 
 @dataclass
 class ErrorDetected ( MudFuzzerEvent ):
@@ -188,13 +184,7 @@ class MudFuzzer:
             return
 
         self.connection.write ( b )
-
-        try:
-            text = b.decode ( "utf-8" ).encode ( "unicode_escape" ) 
-        except:
-            self._post_fuzz_event ( SentGarbled ( len ( b ) ) )
-        else:
-            self._post_fuzz_event ( SentText ( text ) )
+        self._post_fuzz_event ( SentBuffer ( b ) )
 
     def remember_words ( self, text ):
         try:

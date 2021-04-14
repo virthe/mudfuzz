@@ -56,10 +56,13 @@ def handle_mudfuzzer_event ( app, mudfuzzer_event ):
         control = app.rcv_text
         display_text ( app, control, f"{mudfuzzer_event.text}" )
 
-    if ( type(mudfuzzer_event) is MF.SentText ):
+    if ( type(mudfuzzer_event) is MF.SentBuffer ):
         control = app.sent_text
-        display_text (  app, control, f"{mudfuzzer_event.text}" + "\n" )
+        text = mudfuzzer_event.b.decode ( encoding="utf-8", errors="replace" )
+        display_text (  app, control, text )
 
 def display_text ( app, control, text ):
-    control.insert_text ( strip_ansi ( text ) )
+    text = strip_ansi ( text )
+    text = text.replace ( "\r", "" )
+    control.insert_text ( text )
     app.invalidate ()
