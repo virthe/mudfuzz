@@ -1,4 +1,4 @@
-import time, threading, queue
+import asyncio 
 import random, re
 from enum import Flag, auto
 from dataclasses import dataclass
@@ -43,20 +43,6 @@ class ErrorDetected ( MudFuzzerEvent ):
 class FuzzerStateChanged ( MudFuzzerEvent ):
     state: Type [ MudFuzzerState ]
 
-class MudfuzzMonitor:
-    def __init__ ( self, mudfuzzer, event_cb ):
-        self.mudfuzzer = mudfuzzer
-        self.event_cb = event_cb
-        thread = threading.Thread ( target=self.mudfuzz_thread, daemon=True )
-        thread.start ()
-
-    def mudfuzz_thread ( self ):
-        self.mudfuzzer.start ()
-        while True:
-            while not self.mudfuzzer.fuzz_event_queue.empty ():
-                self.event_cb ( self.mudfuzzer.get_fuzz_event () )
-            time.sleep ( 0.1 )
-
 class MudFuzzer:
 
     def __init__ ( self, config_data, fuzz_cmd_instances ):
@@ -72,31 +58,24 @@ class MudFuzzer:
         self.memory = deque ( [], 100 )
         self.max_reads = 100
 
-        self.fuzz_event_queue = queue.Queue ()
+        self.event_cb = None
         self._change_state ( MudFuzzerState.START )
 
-    def start ( self ):
+    async def start ( self, event_cb ):
         if self.state is not MudFuzzerState.START:
             return
 
+        self.event_cb = event_cb
         self._connect ()
-        
-        self.thread = threading.Thread ( target=self._run, 
-                daemon=True )
-        self.thread.start ()
 
-    def get_fuzz_event ( self ): 
-        if self.fuzz_event_queue.empty ():
-            return None
-        return self.fuzz_event_queue.get ( block=False )
-
-    def _post_fuzz_event ( self, e ):
-        self.fuzz_event_queue.put ( e )
-
-    def _run ( self ):
         while True:
             self._tick ()
-            time.sleep ( 0.1 )
+            await asyncio.sleep ( 0.1 )
+        
+
+    def _post_fuzz_event ( self, e ):
+        if self.event_cb is not None:
+            self.event_cb ( e )
 
     def _connect ( self ):
         if self.state is not MudFuzzerState.START:

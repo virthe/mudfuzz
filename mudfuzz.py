@@ -65,9 +65,10 @@ async def main ( **kwargs ):
     fuzz_cmds = load_fuzz_commands ()
     mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds )
 
-    cb = no_ui_cb if kwargs [ "no_ui" ] else UI.get_ui_cb ()
+    event_cb = no_ui_cb if kwargs [ "no_ui" ] else UI.get_ui_cb ()
 
-    mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
+    #mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
+    asyncio.create_task ( mudfuzzer.start ( event_cb ) )
 
     while True:
         await asyncio.sleep ( 1000 )
