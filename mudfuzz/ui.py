@@ -1,4 +1,5 @@
 import threading, time
+from dataclasses import dataclass
 
 from prompt_toolkit import Application
 from prompt_toolkit.layout.containers import VSplit, HSplit, Window
@@ -25,11 +26,14 @@ def start_ui ( config_data, mudfuzzer ):
         Window(content=sent_text.content)
     ])
 
+    status_display = StatusDisplay ()
+
     root_container = HSplit([
         Window(height=2, content=FormattedTextControl(text=title_str)),
         Window(height=1, char='-'),
         sent_rcv_container,
         Window(height=1, char='-'),
+        Window(height=3, content=status_display.content )
     ])
 
     layout = Layout ( root_container )
@@ -43,6 +47,7 @@ def start_ui ( config_data, mudfuzzer ):
     app = Application ( full_screen=True, layout=layout, key_bindings=kb )
     app.rcv_text = rcv_text
     app.sent_text = sent_text
+    app.status_display = status_display
     mf_monitor = MudfuzzMonitor ( app, mudfuzzer )
     app.run ()
 
@@ -63,6 +68,16 @@ class ScrollingTextDisplay:
             buff.delete_before_cursor ( buff.cursor_position )
             buff.cursor_position = len ( buff.document.text )
 
+@dataclass
+class Status:
+    fuzzer_state:str="#State"
+
+class StatusDisplay:
+    def __init__ ( self ):
+        self.content=FormattedTextControl(text="Status" )
+        self.status=Status()
+    def update_display ( self ):
+        self.content.text=f"State: {self.status.fuzzer_state}"
 
 class MudfuzzMonitor:
     def __init__ ( self, app, mudfuzzer ):
@@ -80,6 +95,12 @@ class MudfuzzMonitor:
             time.sleep ( 0.1 )
 
 def handle_mudfuzzer_event ( app, mudfuzzer_event ):
+
+    if ( type(mudfuzzer_event) is MF.FuzzerStateChanged ):
+        s = mudfuzzer_event.state
+        app.status_display.status.fuzzer_state = s.name
+        app.status_display.update_display ()
+        app.invalidate ()
 
     if ( type(mudfuzzer_event) is MF.ReceivedText ):
         control = app.rcv_text
