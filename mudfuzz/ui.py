@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 
 from prompt_toolkit import Application
@@ -13,7 +14,7 @@ from prompt_toolkit.styles import Style
 import mudfuzz.mud_fuzzer as MF
 from mudfuzz.util import *
 
-def start_ui ( config_data, mudfuzzer ):
+def get_ui_cb ():
 
     title_str = "░█▄▒▄█░█▒█░█▀▄▒█▀░█▒█░▀█▀░▀█▀\n"+ \
                 "░█▒▀▒█░▀▄█▒█▄▀░█▀░▀▄█░█▄▄░█▄▄"
@@ -57,9 +58,10 @@ def start_ui ( config_data, mudfuzzer ):
     app.sent_text = sent_text
     app.status_display = status_display
 
+    asyncio.create_task(app.run_async ())
+
     cb = lambda e : handle_mudfuzzer_event ( app, e )
-    mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
-    app.run ()
+    return cb
 
 class ScrollingTextDisplay:
     def __init__ ( self ):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import time
-import re, string, argparse, json
+import asyncio
+import string, argparse, json
 import importlib, pkgutil, sys
 from dataclasses import dataclass
 from typing import List, Dict 
@@ -53,16 +53,10 @@ def parse_config_file ( f ):
     data = json.load ( f )
     return MudFuzzConfig ( **data )
 
-def run_no_ui ( config_data, mudfuzzer ):
-    print ( "MUD Fuzz" )
+def no_ui_cb ( e ):
+    print ( e )
 
-    cb = lambda e : print ( e )
-    mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
-
-    while True:
-        time.sleep ( 10 )
-
-def main ( **kwargs ):
+async def main ( **kwargs ):
     config_data = None
 
     with ( open ( kwargs [ "config_path" ] ) ) as f:
@@ -71,10 +65,13 @@ def main ( **kwargs ):
     fuzz_cmds = load_fuzz_commands ()
     mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds )
 
-    if kwargs [ "no_ui" ]:
-        run_no_ui ( config_data, mudfuzzer )
-    else:
-        UI.start_ui ( config_data, mudfuzzer )
+    cb = no_ui_cb if kwargs [ "no_ui" ] else UI.get_ui_cb ()
+
+    mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
+
+    while True:
+        await asyncio.sleep ( 1000 )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser ( description="Mud Fuzz",
@@ -88,6 +85,6 @@ if __name__ == "__main__":
     args = parser.parse_args ()
 
     try:
-        main ( config_path=args.config, no_ui=args.no_ui )
+        asyncio.run ( main ( config_path=args.config, no_ui=args.no_ui ) )
     except KeyboardInterrupt:
         pass
