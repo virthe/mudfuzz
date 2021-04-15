@@ -48,10 +48,8 @@ class MudConnection:
         self.output_queue.put_nowait ( rcv )
 
     def _write_telnet ( self, tn ):
-
         while not self.input_queue.empty ():
             send = self.input_queue.get (block=False)
-
             if send is not None:
                 tn.write ( send )
 
