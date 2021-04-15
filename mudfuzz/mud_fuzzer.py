@@ -61,17 +61,19 @@ class MudFuzzer:
         self.event_cb = None
         self._change_state ( MudFuzzerState.START )
 
-    async def start ( self, event_cb ):
+    def start ( self, event_cb ):
         if self.state is not MudFuzzerState.START:
             return
 
         self.event_cb = event_cb
         self._connect ()
 
+        asyncio.create_task ( self._run () )
+
+    async def _run ( self ):
         while True:
             self._tick ()
             await asyncio.sleep ( 0.1 )
-        
 
     def _post_fuzz_event ( self, e ):
         if self.event_cb is not None:
@@ -84,6 +86,7 @@ class MudFuzzer:
 
         self.connection = MudConnection ( self.config_data.mud_host,
                                           self.config_data.mud_port )
+        asyncio.create_task ( self.connection.connect () )
         self._change_state ( MudFuzzerState.AWAIT_USER )
 
     def _tick ( self ):

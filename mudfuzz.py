@@ -67,8 +67,7 @@ async def main ( **kwargs ):
 
     event_cb = no_ui_cb if kwargs [ "no_ui" ] else UI.get_ui_cb ()
 
-    #mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
-    asyncio.create_task ( mudfuzzer.start ( event_cb ) )
+    mudfuzzer.start ( event_cb )
 
     while True:
         await asyncio.sleep ( 1000 )

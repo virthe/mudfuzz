@@ -1,3 +1,4 @@
+import asyncio
 import time, threading
 import queue
 from telnetlib import Telnet
@@ -12,10 +13,23 @@ class MudConnection:
         self.input_queue = queue.Queue ()
         self.output_queue = queue.Queue ()
 
-        self.thread = threading.Thread ( target=self._telnet_process, 
-                daemon=True )
-        self.thread.start ()
+    async def connect ( self ):
 
+        in_thread = threading.Thread ( target = self._read_telnet,
+                daemon=True )
+        out_thread = threading.Thread ( target = self._write_telnet,
+                daemon=True )
+
+        with Telnet ( self.host, self.port ) as tn:
+
+            self.tn = tn
+            self.connected = True
+
+            in_thread.start ()
+            out_thread.start ()
+
+            while self.connected:
+                await asyncio.sleep ( 1 )
 
     def read ( self ):
         try:
@@ -28,29 +42,25 @@ class MudConnection:
     def write ( self, data ):
         self.input_queue.put_nowait ( data )
 
-    def _telnet_process ( self ):
-        with Telnet ( self.host, self.port ) as tn:
-            while True:
-                try:
-                    self._read_telnet ( tn )
-                except EOFError:
-                    break
-
-                try:
-                    self._write_telnet ( tn )
-                except OSError:
-                    break
-
-                time.sleep ( 0.1 )
+    def _connection_broken ( self ):
+        self.connected = False
     
-    def _read_telnet ( self, tn ):
-        rcv = tn.read_until ( b"\r\n", 0.1 )
-        self.output_queue.put_nowait ( rcv )
+    def _read_telnet ( self ):
+        while self.connected:
+            try:
+                rcv = self.tn.read_until ( b"\r\n", 5 )
+            except EOFError:
+                self._connection_broken ()
+            self.output_queue.put_nowait ( rcv )
 
-    def _write_telnet ( self, tn ):
-        while not self.input_queue.empty ():
-            send = self.input_queue.get (block=False)
+    def _write_telnet ( self ):
+        while self.connected:
+            send = self.input_queue.get ()
             if send is not None:
-                tn.write ( send )
+                try:
+                    self.tn.write ( send )
+                except OSError:
+                    self._connection_broken ()
+            time.sleep ( 0.1 )
 
 
