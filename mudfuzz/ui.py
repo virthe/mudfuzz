@@ -1,4 +1,4 @@
-import asyncio
+import asyncio, sys
 from dataclasses import dataclass
 
 from prompt_toolkit import Application
@@ -47,6 +47,7 @@ def get_ui_cb ():
     @kb.add('c-c')
     def _(event):
         event.app.exit ()
+        sys.exit ()
 
     style = Style([
         ("status_name", "#aa8800"),
