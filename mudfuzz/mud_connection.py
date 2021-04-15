@@ -41,7 +41,7 @@ class MudConnection:
                 except OSError:
                     break
 
-                time.sleep ( 0.01 )
+                time.sleep ( 0.1 )
     
     def _read_telnet ( self, tn ):
         rcv = tn.read_until ( b"\r\n", 0.1 )

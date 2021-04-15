@@ -60,7 +60,7 @@ def run_no_ui ( config_data, mudfuzzer ):
     mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
 
     while True:
-        time.sleep ( 0.1 )
+        time.sleep ( 10 )
 
 def main ( **kwargs ):
     config_data = None
