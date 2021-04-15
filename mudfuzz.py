@@ -55,12 +55,11 @@ def parse_config_file ( f ):
 
 def run_no_ui ( config_data, mudfuzzer ):
     print ( "MUD Fuzz" )
-    mudfuzzer.start ()
+
+    cb = lambda e : print ( e )
+    mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
+
     while True:
-        while not mudfuzzer.fuzz_event_queue.empty ():
-            e = mudfuzzer.get_fuzz_event ()
-            if e.__class__ in [ MF.FuzzerStateChanged, MF.ErrorDetected ]:
-                print ( e )
         time.sleep ( 0.1 )
 
 def main ( **kwargs ):

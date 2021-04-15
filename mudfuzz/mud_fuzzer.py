@@ -43,6 +43,20 @@ class ErrorDetected ( MudFuzzerEvent ):
 class FuzzerStateChanged ( MudFuzzerEvent ):
     state: Type [ MudFuzzerState ]
 
+class MudfuzzMonitor:
+    def __init__ ( self, mudfuzzer, event_cb ):
+        self.mudfuzzer = mudfuzzer
+        self.event_cb = event_cb
+        thread = threading.Thread ( target=self.mudfuzz_thread, daemon=True )
+        thread.start ()
+
+    def mudfuzz_thread ( self ):
+        self.mudfuzzer.start ()
+        while True:
+            while not self.mudfuzzer.fuzz_event_queue.empty ():
+                self.event_cb ( self.mudfuzzer.get_fuzz_event () )
+            time.sleep ( 0.1 )
+
 class MudFuzzer:
 
     def __init__ ( self, config_data, fuzz_cmd_instances ):
@@ -71,7 +85,7 @@ class MudFuzzer:
                 daemon=True )
         self.thread.start ()
 
-    def get_fuzz_event ( self ):
+    def get_fuzz_event ( self ): 
         if self.fuzz_event_queue.empty ():
             return None
         return self.fuzz_event_queue.get ( block=False )

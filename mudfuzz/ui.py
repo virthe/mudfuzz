@@ -1,4 +1,3 @@
-import threading, time
 from dataclasses import dataclass
 
 from prompt_toolkit import Application
@@ -57,7 +56,9 @@ def start_ui ( config_data, mudfuzzer ):
     app.rcv_text = rcv_text
     app.sent_text = sent_text
     app.status_display = status_display
-    mf_monitor = MudfuzzMonitor ( app, mudfuzzer )
+
+    cb = lambda e : handle_mudfuzzer_event ( app, e )
+    mf_monitor = MF.MudfuzzMonitor ( mudfuzzer, cb )
     app.run ()
 
 class ScrollingTextDisplay:
@@ -96,21 +97,6 @@ class StatusDisplay:
             ( "class:status_name", "Errors: " ),
             ( "class:status_value", f"{self.status.error_count}" )
         ])
-
-class MudfuzzMonitor:
-    def __init__ ( self, app, mudfuzzer ):
-        self.app = app
-        self.mudfuzzer = mudfuzzer
-        thread = threading.Thread ( target=self.mudfuzz_thread, daemon=True )
-        thread.start ()
-
-    def mudfuzz_thread ( self ):
-        self.mudfuzzer.start ()
-        while True:
-            while not self.mudfuzzer.fuzz_event_queue.empty ():
-                handle_mudfuzzer_event ( self.app, 
-                                         self.mudfuzzer.get_fuzz_event () )
-            time.sleep ( 0.1 )
 
 def handle_mudfuzzer_event ( app, mudfuzzer_event ):
 
