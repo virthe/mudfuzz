@@ -16,19 +16,20 @@ def start_ui ( config_data, mudfuzzer ):
     title_str = "░█▄▒▄█░█▒█░█▀▄▒█▀░█▒█░▀█▀░▀█▀\n"+ \
                 "░█▒▀▒█░▀▄█▒█▄▀░█▀░▀▄█░█▄▄░█▄▄"
 
-    rcv_text = Buffer()
-    sent_text = Buffer()
+    rcv_text = ScrollingTextDisplay()
+    sent_text = ScrollingTextDisplay()
 
-    buffer_container = VSplit([
-        Window(content=BufferControl(rcv_text)),
+    sent_rcv_container = VSplit([
+        Window(content=rcv_text.content ),
         Window(width=1, char='|'),
-        Window(content=BufferControl(sent_text))
+        Window(content=sent_text.content)
     ])
 
     root_container = HSplit([
         Window(height=2, content=FormattedTextControl(text=title_str)),
         Window(height=1, char='-'),
-        buffer_container
+        sent_rcv_container,
+        Window(height=1, char='-'),
     ])
 
     layout = Layout ( root_container )
@@ -44,6 +45,24 @@ def start_ui ( config_data, mudfuzzer ):
     app.sent_text = sent_text
     mf_monitor = MudfuzzMonitor ( app, mudfuzzer )
     app.run ()
+
+class ScrollingTextDisplay:
+    def __init__ ( self ):
+        self.buffer =  Buffer () 
+        self.content = BufferControl ( self.buffer )
+
+    def display_text ( self, text ):
+        buff=self.buffer
+        text = strip_ansi ( text )
+        text = text.replace ( "\r", "" )
+        buff.insert_text ( text )
+
+        if buff.document.line_count > 200:
+            buff.cursor_position = 0
+            buff.cursor_down ( 100 )
+            buff.delete_before_cursor ( buff.cursor_position )
+            buff.cursor_position = len ( buff.document.text )
+
 
 class MudfuzzMonitor:
     def __init__ ( self, app, mudfuzzer ):
@@ -64,22 +83,12 @@ def handle_mudfuzzer_event ( app, mudfuzzer_event ):
 
     if ( type(mudfuzzer_event) is MF.ReceivedText ):
         control = app.rcv_text
-        display_text ( app, control, mudfuzzer_event.text )
+        app.rcv_text.display_text ( mudfuzzer_event.text )
+        app.invalidate ()
 
     if ( type(mudfuzzer_event) is MF.SentBuffer ):
         control = app.sent_text
         text = mudfuzzer_event.b.decode ( encoding="utf-8", errors="replace" )
-        display_text (  app, control, text )
+        app.sent_text.display_text ( text )
+        app.invalidate ()
 
-def display_text ( app, buff, text ):
-    text = strip_ansi ( text )
-    text = text.replace ( "\r", "" )
-    buff.insert_text ( text )
-
-    if buff.document.line_count > 200:
-        buff.cursor_position = 0
-        buff.cursor_down ( 100 )
-        buff.delete_before_cursor ( buff.cursor_position )
-        buff.cursor_position = len ( buff.document.text )
-
-    app.invalidate ()
