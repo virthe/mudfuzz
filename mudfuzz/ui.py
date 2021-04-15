@@ -8,6 +8,8 @@ from prompt_toolkit.filters import Always
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit.styles import Style
 
 import mudfuzz.mud_fuzzer as MF
 from mudfuzz.util import *
@@ -16,6 +18,8 @@ def start_ui ( config_data, mudfuzzer ):
 
     title_str = "░█▄▒▄█░█▒█░█▀▄▒█▀░█▒█░▀█▀░▀█▀\n"+ \
                 "░█▒▀▒█░▀▄█▒█▄▀░█▀░▀▄█░█▄▄░█▄▄"
+
+    title=FormattedText([("#ffff00",title_str)])
 
     rcv_text = ScrollingTextDisplay()
     sent_text = ScrollingTextDisplay()
@@ -29,11 +33,11 @@ def start_ui ( config_data, mudfuzzer ):
     status_display = StatusDisplay ()
 
     root_container = HSplit([
-        Window(height=2, content=FormattedTextControl(text=title_str)),
+        Window(height=2, content=FormattedTextControl(text=title)),
         Window(height=1, char='-'),
         sent_rcv_container,
         Window(height=1, char='-'),
-        Window(height=3, content=status_display.content )
+        status_display.window
     ])
 
     layout = Layout ( root_container )
@@ -44,7 +48,12 @@ def start_ui ( config_data, mudfuzzer ):
     def _(event):
         event.app.exit ()
 
-    app = Application ( full_screen=True, layout=layout, key_bindings=kb )
+    style = Style([
+        ("status_name", "#aa8800"),
+        ("status_value", "#00cc00")
+    ])
+    app = Application ( full_screen=True, layout=layout, key_bindings=kb,
+            style=style )
     app.rcv_text = rcv_text
     app.sent_text = sent_text
     app.status_display = status_display
@@ -70,14 +79,23 @@ class ScrollingTextDisplay:
 
 @dataclass
 class Status:
-    fuzzer_state:str="#State"
+    fuzzer_state:str="INIT"
+    error_count:int=0
 
 class StatusDisplay:
     def __init__ ( self ):
-        self.content=FormattedTextControl(text="Status" )
+        self.content=FormattedTextControl()
+        self.window = Window(height=1, content=self.content )
         self.status=Status()
+
     def update_display ( self ):
-        self.content.text=f"State: {self.status.fuzzer_state}"
+        self.content.text= FormattedText ([
+            ( "class:status_name", "State: " ),
+            ( "class:status_value", f"{self.status.fuzzer_state}" ),
+            ("", " "),
+            ( "class:status_name", "Errors: " ),
+            ( "class:status_value", f"{self.status.error_count}" )
+        ])
 
 class MudfuzzMonitor:
     def __init__ ( self, app, mudfuzzer ):
@@ -99,6 +117,11 @@ def handle_mudfuzzer_event ( app, mudfuzzer_event ):
     if ( type(mudfuzzer_event) is MF.FuzzerStateChanged ):
         s = mudfuzzer_event.state
         app.status_display.status.fuzzer_state = s.name
+        app.status_display.update_display ()
+        app.invalidate ()
+
+    if ( type(mudfuzzer_event) is MF.ErrorDetected ):
+        app.status_display.status.error_count += 1
         app.status_display.update_display ()
         app.invalidate ()
 
