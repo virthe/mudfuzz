@@ -22,9 +22,8 @@ class MudFuzzConfig:
     password_prompt: str
     error_pattern: str
     error_pause: bool
+    terms: Dict [ str, float ]
     fuzz_cmds: Dict [ str, float ]
-    valid_commands: List [ str ]
-    valid_words: List [ str ]
 
 
 def load_fuzz_commands ():
