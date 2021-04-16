@@ -7,7 +7,6 @@ from collections import deque
 
 from mudfuzz.util import *
 from mudfuzz.mud_connection import MudConnection
-from mudfuzz.fuzz_commands.fuzz_command import FuzzCommand
 
 class MudFuzzerState(Flag):
     START = auto()
@@ -45,15 +44,10 @@ class FuzzerStateChanged ( MudFuzzerEvent ):
 
 class MudFuzzer:
 
-    def __init__ ( self, config_data, fuzz_cmd_instances, terms ):
+    def __init__ ( self, config_data, fuzz_cmds, terms ):
         self.config_data = config_data
         self.connection = None
-        self.fuzz_cmd_instances = fuzz_cmd_instances
-
-        #Create FuzzAction list from fuzz_cmds in config
-        cmd_inst = lambda x : self.get_cmd_instance ( x [ 0 ] )
-        self.actions = [ self.FuzzAction ( *x, cmd_inst( x ) ) for x in \
-                config_data.fuzz_cmds.items() ]
+        self.fuzz_cmds = fuzz_cmds
 
         self.terms = terms
         self.memory = deque ( [], 100 )
@@ -106,11 +100,13 @@ class MudFuzzer:
                 break
 
         if self.state is MudFuzzerState.FUZZING:
-            if len ( self.actions ) > 0:
-                weights = [ x.probability for x in self.actions ]
-                action = random.choices ( self.actions, weights ) [ 0 ]
-                self.execute_action ( action )
-                return
+            self._do_random_fuzz_cmd ()
+
+    def _do_random_fuzz_cmd ( self ):
+        cmds = list ( self.fuzz_cmds.keys () )
+        weights = self.fuzz_cmds.values()
+        cmd = random.choices ( cmds, weights ) [ 0 ]
+        cmd.execute ( self )
 
     def _change_state ( self, s ):
         self.state = s
@@ -202,24 +198,4 @@ class MudFuzzer:
         if len ( self.memory ) < 1:
             return "memory"
         return random.choice ( self.memory ) 
-
-    @dataclass
-    class FuzzAction:
-        cmd_str: str
-        probability: float
-        cmd_instance: Type[FuzzCommand]
-
-    def get_cmd_instance ( self, cmd_str ):
-        cmd_classname = snake_to_camel_case ( cmd_str )
-
-        match = lambda x : x.__class__.__name__ == cmd_classname
-        matching_cmds = [ x for x in self.fuzz_cmd_instances if match ( x ) ]
-
-        if len ( matching_cmds ) < 1:
-            raise Exception ( f"Unknown command: {cmd_str}" )
-
-        return matching_cmds [ 0 ]
-
-    def execute_action ( self, action ):
-        action.cmd_instance.execute ( self )
 

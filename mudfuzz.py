@@ -25,10 +25,10 @@ class MudFuzzConfig:
     fuzz_cmds: Dict [ str, float ]
 
 
-def load_fuzz_commands ():
+def load_fuzz_commands ( config_cmds ):
     cmd_path = Path ( ".", "mudfuzz", "fuzz_commands" )
     modules = pkgutil.iter_modules ( path=[ cmd_path ] )
-    loaded_cmds = []
+    loaded_cmds = dict ()
 
     for loader, mod_name, ispkg in modules:
         if mod_name in sys.modules:
@@ -37,13 +37,13 @@ def load_fuzz_commands ():
         loaded_mod = importlib.import_module (
                 f"mudfuzz.fuzz_commands.{mod_name}" )
         class_name = snake_to_camel_case ( mod_name )
-        loaded_class = getattr ( loaded_mod, class_name, None )
 
-        if not loaded_class:
-            continue
-
-        instance = loaded_class ()
-        loaded_cmds.append ( instance )
+        print ( mod_name )
+        if mod_name in config_cmds:
+            loaded_class = getattr ( loaded_mod, class_name, None )
+            instance = loaded_class ()
+            probability = config_cmds [ mod_name ]
+            loaded_cmds [ instance ] = probability
 
     return loaded_cmds
 
@@ -73,8 +73,7 @@ async def main ( **kwargs ):
         config_data = parse_config_file ( f )
 
     terms = load_terms ( config_path.parent / "terms" )
-
-    fuzz_cmds = load_fuzz_commands ()
+    fuzz_cmds = load_fuzz_commands ( config_data.fuzz_cmds )
     mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds, terms )
 
     event_cb = no_ui_cb if kwargs [ "no_ui" ] else UI.get_ui_cb ()
