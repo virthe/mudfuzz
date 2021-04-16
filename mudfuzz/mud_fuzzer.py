@@ -50,7 +50,7 @@ class MudFuzzer:
         self.fuzz_cmds = fuzz_cmds
 
         self.terms = terms
-        self.memory = deque ( [], 100 )
+        self.memory = deque ( [], 300 )
         self.max_reads = 100
 
         self.event_cb = None
@@ -185,13 +185,9 @@ class MudFuzzer:
         self._post_fuzz_event ( SentBuffer ( b ) )
 
     def remember_words ( self, text ):
-        try:
-            words = strip_ansi(text).strip().split(" ")
-        except:
-            return
-
-        words = [ x for x in words if len ( x ) > 0 ]
-
+        text = strip_ansi(text).lower()
+        text = re.sub(r'[^a-z0-9 ]', "", text)
+        words = [ x for x in text.split(" ") if len(x) > 0 ]
         self.memory.extend ( words )
 
     def get_random_remembered_word ( self ):
