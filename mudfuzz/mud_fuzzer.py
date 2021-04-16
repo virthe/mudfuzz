@@ -76,7 +76,8 @@ class MudFuzzer:
             await asyncio.sleep ( 0.1 )
 
     def _post_fuzz_event ( self, e ):
-        self.event_cb ( e )
+        if self.event_cb is not None:
+            self.event_cb ( e )
 
     def _connect ( self ):
         if self.state is not MudFuzzerState.START:
