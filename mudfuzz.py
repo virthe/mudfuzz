@@ -22,7 +22,6 @@ class MudFuzzConfig:
     password_prompt: str
     error_pattern: str
     error_pause: bool
-    terms: Dict [ str, float ]
     fuzz_cmds: Dict [ str, float ]
 
 
@@ -52,17 +51,31 @@ def parse_config_file ( f ):
     data = json.load ( f )
     return MudFuzzConfig ( **data )
 
+def load_terms ( terms_path ):
+    def r ( x ):
+        with open ( x ) as f:
+            return [ l.strip() for l in  f.readlines () ]
+    return { x.name : r (x) for x in terms_path.iterdir () if x.is_file () }
+
 def no_ui_cb ( e ):
     print ( e )
 
 async def main ( **kwargs ):
     config_data = None
 
-    with ( open ( kwargs [ "config_path" ] ) ) as f:
+    config_path = Path ( kwargs [ "config_path" ] ).resolve ()
+
+    if not config_path.is_file ():
+        print ( f"Unable to open config.json at {config_path}." )
+        return
+
+    with ( open (config_path) ) as f:
         config_data = parse_config_file ( f )
 
+    terms = load_terms ( config_path.parent / "terms" )
+
     fuzz_cmds = load_fuzz_commands ()
-    mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds )
+    mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds, terms )
 
     event_cb = no_ui_cb if kwargs [ "no_ui" ] else UI.get_ui_cb ()
 

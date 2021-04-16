@@ -7,15 +7,9 @@
     "password_prompt" : "What is your password?",
     "error_pattern" : "An error has occurred.",
     "error_pause" : true,
-    "terms" : {
-        "terms/cmds" : 1,
-        "terms/escape" : 0.1
-    },
     "fuzz_cmds" : {
        "send_random_string"   : 0.05, 
        "send_eol"             : 0.25, 
-       "send_escape"          :  0.1, 
-       "send_look"            :  0.2, 
        "send_term"            :  0.5,
        "sleep"                :  0.1,
        "send_remembered_word" : 0.75,

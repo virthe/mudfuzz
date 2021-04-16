@@ -45,7 +45,7 @@ class FuzzerStateChanged ( MudFuzzerEvent ):
 
 class MudFuzzer:
 
-    def __init__ ( self, config_data, fuzz_cmd_instances ):
+    def __init__ ( self, config_data, fuzz_cmd_instances, terms ):
         self.config_data = config_data
         self.connection = None
         self.fuzz_cmd_instances = fuzz_cmd_instances
@@ -55,6 +55,7 @@ class MudFuzzer:
         self.actions = [ self.FuzzAction ( *x, cmd_inst( x ) ) for x in \
                 config_data.fuzz_cmds.items() ]
 
+        self.terms = terms
         self.memory = deque ( [], 100 )
         self.max_reads = 100
 
@@ -174,6 +175,11 @@ class MudFuzzer:
 
     def send_eol ( self ):
         self.send_string ( "\r\n" )
+
+    def send_term ( self, t=None ):
+        k = random.choice (list( self.terms.keys () )) if t is None else t
+        v = random.choice ( self.terms [ k ] )
+        self.send_string ( v )
 
     def send_buffer ( self, b ):
         if self.connection is None:
