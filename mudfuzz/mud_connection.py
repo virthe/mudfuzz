@@ -47,7 +47,6 @@ class MudConnection:
             while self.connected:
                 await asyncio.sleep ( 1 )
 
-
     def _connection_broken ( self ):
         self.connected = False
     
