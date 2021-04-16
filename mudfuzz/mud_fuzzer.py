@@ -76,8 +76,7 @@ class MudFuzzer:
             await asyncio.sleep ( 0.1 )
 
     def _post_fuzz_event ( self, e ):
-        if self.event_cb is not None:
-            self.event_cb ( e )
+        self.event_cb ( e )
 
     def _connect ( self ):
         if self.state is not MudFuzzerState.START:
@@ -86,7 +85,7 @@ class MudFuzzer:
 
         self.connection = MudConnection ( self.config_data.mud_host,
                                           self.config_data.mud_port )
-        asyncio.create_task ( self.connection.connect () )
+        self.connection.connect ()
         self._change_state ( MudFuzzerState.AWAIT_USER )
 
     def _tick ( self ):
