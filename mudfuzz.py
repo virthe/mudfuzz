@@ -77,8 +77,7 @@ async def main ( **kwargs ):
 
     mudfuzzer.start ( event_cb )
 
-    while True:
-        await asyncio.sleep ( 1000 )
+    await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
