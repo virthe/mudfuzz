@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import asyncio
+import asyncio, sys
 import string, argparse, json
 import importlib, pkgutil, sys
 from dataclasses import dataclass
@@ -47,9 +47,21 @@ def load_fuzz_commands ( config_cmds ):
 
     return loaded_cmds
 
-def parse_config_file ( f ):
-    data = json.load ( f )
-    return MudFuzzConfig ( **data )
+def parse_config_dir ( d ):
+    config_path = Path ( d ).resolve ()
+
+    if not config_path.is_dir ():
+        print ( f"Unable to open config dir at {config_path}." )
+        sys.exit()
+        return
+
+    with ( open (config_path / "config.json" ) ) as f:
+        data = json.load ( f )
+        config_data = MudFuzzConfig ( **data )
+
+    fuzz_cmds = load_fuzz_commands ( config_data.fuzz_cmds )
+    terms = load_terms ( config_path / "terms" )
+    return ( config_data, fuzz_cmds, terms )
 
 def load_terms ( terms_path ):
     def r ( x ):
@@ -58,20 +70,8 @@ def load_terms ( terms_path ):
     return { x.name : r (x) for x in terms_path.iterdir () if x.is_file () }
 
 async def main ( **kwargs ):
-    config_data = None
-
-    config_path = Path ( kwargs [ "config_path" ] ).resolve ()
-
-    if not config_path.is_file ():
-        print ( f"Unable to open config.json at {config_path}." )
-        return
-
-    with ( open (config_path) ) as f:
-        config_data = parse_config_file ( f )
-
-    terms = load_terms ( config_path.parent / "terms" )
-    fuzz_cmds = load_fuzz_commands ( config_data.fuzz_cmds )
-    mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds, terms )
+    config_data = parse_config_dir ( kwargs [ "config_path" ] )
+    mudfuzzer = MF.MudFuzzer ( *config_data )
 
     event_cb = print if kwargs [ "no_ui" ] else UI.get_ui_cb ()
 
