@@ -57,9 +57,6 @@ def load_terms ( terms_path ):
             return [ l.strip() for l in  f.readlines () ]
     return { x.name : r (x) for x in terms_path.iterdir () if x.is_file () }
 
-def no_ui_cb ( e ):
-    print ( e )
-
 async def main ( **kwargs ):
     config_data = None
 
@@ -76,7 +73,7 @@ async def main ( **kwargs ):
     fuzz_cmds = load_fuzz_commands ( config_data.fuzz_cmds )
     mudfuzzer = MF.MudFuzzer ( config_data, fuzz_cmds, terms )
 
-    event_cb = no_ui_cb if kwargs [ "no_ui" ] else UI.get_ui_cb ()
+    event_cb = print if kwargs [ "no_ui" ] else UI.get_ui_cb ()
 
     mudfuzzer.start ( event_cb )
 
