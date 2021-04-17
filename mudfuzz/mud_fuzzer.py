@@ -68,7 +68,7 @@ class MudFuzzer:
     async def _run ( self ):
         while True:
             self._tick ()
-            await asyncio.sleep ( 0.1 )
+            await asyncio.sleep ( 0.5 )
 
     def _post_fuzz_event ( self, e ):
         if self.event_cb is not None:

@@ -53,7 +53,7 @@ class MudConnection:
     def _read_telnet ( self ):
         while self.connected:
             try:
-                rcv = self.tn.read_until ( b"\r\n", 0.1 )
+                rcv = self.tn.read_until ( b"\r\n", 0.5 )
             except EOFError:
                 self._connection_broken ()
                 return
@@ -68,6 +68,6 @@ class MudConnection:
                 except OSError:
                     self._connection_broken ()
                     return
-            time.sleep ( 0.1 )
+            time.sleep ( 0.5 )
 
 
